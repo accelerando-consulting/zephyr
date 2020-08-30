@@ -1,0 +1,11 @@
+# nRF51 CJMCU8223 board configuration
+
+if BOARD_NRF51_CJMCU8223
+
+config BOARD
+	default "nrf51_cjmcu8223"
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_NRF51_CJMCU8223

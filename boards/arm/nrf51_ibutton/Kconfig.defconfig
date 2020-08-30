@@ -1,0 +1,11 @@
+# nRF51 iButton board configuration
+
+if BOARD_NRF51_IBUTTON
+
+config BOARD
+	default "nrf51_ibutton"
+
+config BT_CTLR
+	default BT
+
+endif

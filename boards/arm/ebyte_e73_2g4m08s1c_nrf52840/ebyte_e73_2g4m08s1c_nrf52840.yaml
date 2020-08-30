@@ -1,0 +1,17 @@
+identifier: ebyte_e73_2g4m08s1c_nrf52840
+name: eByte E73-2G4M08S1C nrf52840 System-on-module
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - adc
+  - usb_device
+  - usb_cdc
+  - ble
+  - i2c
+  - ieee802154
+  - watchdog
+  - counter

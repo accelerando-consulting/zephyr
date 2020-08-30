@@ -1,0 +1,5 @@
+# nRF51 Sensor Tag board configuration
+
+config BOARD_NRF51_SENSORTAG
+	bool "nRF51 Sensor Tag"
+	depends on SOC_NRF51822_QFAA

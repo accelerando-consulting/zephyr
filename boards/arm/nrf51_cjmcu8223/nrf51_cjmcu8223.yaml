@@ -1,0 +1,19 @@
+identifier: nrf51_cjmcu8223
+name: CJMCU-8223
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 16
+supported:
+  - ble
+  - counter
+  - gpio
+  - i2c
+  - nvs
+  - watchdog
+testing:
+  ignore_tags:
+    - net

@@ -26,7 +26,6 @@
 			label = "LED";
 		};
 	};
-
 };
 
 &gpiote {
@@ -41,7 +40,7 @@
 	current-speed = <115200>;
 	status = "okay";
 	tx-pin = <9>;
-	rx-pin = <8>;
+	rx-pin = <11>;
 };
 
 &i2c0 {

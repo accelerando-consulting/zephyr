@@ -1,0 +1,11 @@
+# nRF51 Sensor Tag board configuration
+
+if BOARD_NRF51_SENSORTAG
+
+config BOARD
+	default "nrf51_sensortag"
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_NRF51_SENSORTAG

@@ -1,0 +1,5 @@
+# nRF51 iButton board configuration
+
+config BOARD_NRF51_IBUTTON
+	bool "nRF51 iButton"
+	depends on SOC_NRF51822_QFAA

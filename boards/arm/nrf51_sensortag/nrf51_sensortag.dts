@@ -1,0 +1,108 @@
+/dts-v1/;
+#include <nordic/nrf51822_qfaa.dtsi>
+
+/ {
+	model = "Generic nRF51 Sensor Tag";
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,bt-mon-uart = &uart0;
+		zephyr,bt-c2h-uart = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	aliases {
+		led0 = &led0;
+		sw0 = &button0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 17 0>;
+			label = "Red LED";
+		};
+		led1: led_1 {
+			gpios = <&gpio0 18 0>;
+			label = "Green LED";
+		};
+		led2: led_2 {
+			gpios = <&gpio0 19 0>;
+			label = "Blue LED";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			/* gpio flags need validation */
+			gpios = <&gpio0 28 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Button 0";
+		};
+		button1: button_1 {
+			/* gpio flags need validation */
+			gpios = <&gpio0 21 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Button 1";
+		};
+	};
+
+
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&uart0 {
+	current-speed = <115200>;
+	status = "okay";
+	tx-pin = <14>;
+	rx-pin = <15>;
+};
+
+&i2c0 {
+	status = "okay";
+	sda-pin = <10>;
+	scl-pin = <9>;
+};
+
+&flash0 {
+	/*
+	 * For more information, see:
+	 * http://docs.zephyrproject.org/latest/guides/dts/index.html#flash-partitions
+	 */
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 0x8000>;
+		};
+		slot0_partition: partition@8000 {
+			label = "image-0";
+			reg = <0x00008000 0x1a000>;
+		};
+		slot1_partition: partition@22000 {
+			label = "image-1";
+			reg = <0x00022000 0x1a000>;
+		};
+		scratch_partition: partition@3c000 {
+			label = "image-scratch";
+			reg = <0x0003c000 0x2000>;
+		};
+		storage_partition: partition@3e000 {
+			label = "storage";
+			reg = <0x0003e000 0x00002000>;
+		};
+	};
+};

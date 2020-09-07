@@ -1,0 +1,8 @@
+# Copyright (c) 2019, Actinius
+# SPDX-License-Identifier: Apache-2.0
+
+description: Si7210 Hall-effect sensor with temperature
+
+compatible: "silabs,si7210"
+
+include: i2c-device.yaml

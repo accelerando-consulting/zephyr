@@ -1,0 +1,10 @@
+# SI7210 hall-effect and temperature sensor configuration options
+
+# Copyright (c) 2020 Accelerando
+# SPDX-License-Identifier: Apache-2.0
+
+config SI7210
+	bool "SI7210 Hall-Effect and Temperature Sensor"
+	depends on (I2C && HAS_DTS_I2C)
+	help
+	  Enable driver for SI7210 Hall-effect sensors.

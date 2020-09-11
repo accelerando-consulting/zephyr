@@ -18,7 +18,7 @@
 LOG_MODULE_REGISTER(si7210, CONFIG_SENSOR_LOG_LEVEL);
 
 struct si7210_data {
-	struct device *i2c_dev;
+	const struct device *i2c_dev;
 	uint16_t temperature;
 	uint16_t field;
 };
@@ -26,10 +26,13 @@ struct si7210_data {
 static int si7210_reg_read(struct si7210_data *drv_data, uint8_t reg,
 			     uint8_t *val)
 {
-	LOG_INF("si7210_reg_read 0x%x\n", (int)reg);
+	//LOG_INF("si7210_reg_read 0x%x\n", (int)reg);
+	int err;
 
-	if (i2c_reg_read_byte(drv_data->i2c_dev,
-		DT_INST_REG_ADDR(0), reg, val)) {
+	err = i2c_reg_read_byte(drv_data->i2c_dev,
+				DT_INST_REG_ADDR(0), reg, val);
+	if (err != 0) {
+		LOG_INF("si7210_reg_read error %d\n", (int)err);
 		return -EIO;
 	}
 
@@ -39,7 +42,7 @@ static int si7210_reg_read(struct si7210_data *drv_data, uint8_t reg,
 static int si7210_reg_write(struct si7210_data *drv_data, uint8_t reg,
 			      uint8_t val)
 {
-	LOG_INF("si7210_reg_write 0x%x 0x%x\n", (int)reg, (int)val);
+	//LOG_INF("si7210_reg_write 0x%x 0x%x\n", (int)reg, (int)val);
 	return i2c_reg_write_byte(drv_data->i2c_dev,
 		DT_INST_REG_ADDR(0), reg, val);
 }
@@ -67,46 +70,57 @@ static int si7210_set_oneshot(struct si7210_data *drv_data, bool oneshot)
 	return 0;
 }
 
-static int si7210_sample_fetch(struct device *dev, enum sensor_channel chan)
+static int si7210_sample_fetch(const struct device *dev,
+			       enum sensor_channel chan)
 {
 	struct si7210_data *drv_data = dev->data;
 
-	int retval;
+	int err;
 	uint8_t dspsigm;
 	uint8_t dspsigl;
 
 	if (si7210_set_oneshot(drv_data, true) != 0) {
 		return -EIO;
 	}
-	if (si7210_reg_write(drv_data, SI7210_REG_SIG_SEL, (chan==SENSOR_CHAN_AMBIENT_TEMP)?1:0) != 0) {
-		return -EIO;
-	}
 
-	retval = si7210_reg_read(drv_data, SI7210_REG_SIG_HIGH,
-				 &dspsigm);
-	retval += si7210_reg_read(drv_data, SI7210_REG_SIG_LOW,
-				  &dspsigl);
 
-	if (chan == SENSOR_CHAN_MAGN_Z) {
+	if ((chan == SENSOR_CHAN_MAGN_Z) || (chan == SENSOR_CHAN_ALL)) {
+		err = si7210_reg_write(drv_data, SI7210_REG_SIG_SEL, 0);
+		
+		if (!err) {
+			err = si7210_reg_read(drv_data, SI7210_REG_SIG_HIGH,
+					      &dspsigm);
+		}
+		if (!err) {
+			err = si7210_reg_read(drv_data, SI7210_REG_SIG_LOW,
+					    &dspsigl);
+		}
+		if (err != 0) return err;
+
 		drv_data->field = (((dspsigm&0x7f)<<8)|(dspsigl&0xFF))-16384;
 	}
-	else if (chan == SENSOR_CHAN_AMBIENT_TEMP) {
-		if (retval == 0) {
-			drv_data->temperature = (256 * (dspsigm & SIGN_BIT_MASK))
-				+ dspsigl;
-		} else {
-			LOG_ERR("Read register err");
+	// not an else-case
+	if ((chan == SENSOR_CHAN_MAGN_Z) || (chan == SENSOR_CHAN_ALL)) {
+		err = si7210_reg_write(drv_data, SI7210_REG_SIG_SEL, 1);
+		if (!err) {
+			err = si7210_reg_read(drv_data, SI7210_REG_SIG_HIGH,
+					 &dspsigm);
 		}
-	}
-	else {
-		retval = -ENOTSUP;
-	}
-	LOG_DBG("Sample_fetch retval: %d", retval);
+		if (!err) {
+			err = si7210_reg_read(drv_data, SI7210_REG_SIG_LOW,
+					      &dspsigl);
+		}
+		if (err != 0) return err;
+		drv_data->temperature = (256 * (dspsigm & SIGN_BIT_MASK)) + dspsigl;
 
-	return retval;
+	}
+
+	//LOG_INF("fetch success chan=%d", (int)chan);
+	return err;
 }
 
-static int si7210_channel_get(struct device *dev, enum sensor_channel chan,
+static int si7210_channel_get(const struct device *dev,
+			      enum sensor_channel chan,
 			      struct sensor_value *val)
 {
 	struct si7210_data *drv_data = dev->data;
@@ -119,18 +133,21 @@ static int si7210_channel_get(struct device *dev, enum sensor_channel chan,
 		uval = drv_data->field * 1000000 / SI7210_SCALE_DIVISOR_COARSE;
 		val->val1 = uval / 1000000;
 		val->val2 = uval % 1000000;
-		LOG_DBG("Field = val1:%d, val2:%d", val->val1, val->val2);
+		//LOG_INF("Field = val1:%d, val2:%d", val->val1, val->val2);
 	}
 	else if (chan == SENSOR_CHAN_AMBIENT_TEMP) {
 		uval = ((55 * 160) + (drv_data->temperature - 16384)) >> 4;
 		val->val1 = uval / 10;
 		val->val2 = (uval % 10) * 100000;
 
-		LOG_DBG("Temperature = val1:%d, val2:%d", val->val1, val->val2);
+		//LOG_INF("Temperature = val1:%d, val2:%d", val->val1, val->val2);
 
 	} else {
+		LOG_ERR("Unsupported channel %d", (int)chan);
 		return -ENOTSUP;
 	}
+
+	//LOG_INF("get success chan=%d", (int)chan);
 	return 0;
 }
 
@@ -139,7 +156,7 @@ static const struct sensor_driver_api si7210_api = {
 	.channel_get = &si7210_channel_get,
 };
 
-static int si7210_chip_init(struct device *dev)
+static int si7210_chip_init(const struct device *dev)
 {
 	struct si7210_data *drv_data = dev->data;
 	uint8_t value;
@@ -164,13 +181,13 @@ static int si7210_chip_init(struct device *dev)
 		return -ENOTSUP;
 	}
 
-	LOG_INF("si7210_chip_init success\n");
+	//LOG_INF("si7210_chip_init success\n");
 	return 0;
 }
 
-static int si7210_init(struct device *dev)
+static int si7210_init(const struct device *dev)
 {
-	LOG_INF("si7210_init\n");
+	//LOG_INF("si7210_init\n");
 	
 	if (si7210_chip_init(dev) < 0) {
 		return -EINVAL;

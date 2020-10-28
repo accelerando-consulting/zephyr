@@ -6,3 +6,8 @@ description: Si7210 Hall-effect sensor with temperature
 compatible: "silabs,si7210"
 
 include: i2c-device.yaml
+
+properties:
+    irq-gpios:
+      required: false
+      type: phandle-array

@@ -5,6 +5,6 @@
 
 config SI7210
 	bool "SI7210 Hall-Effect and Temperature Sensor"
-	depends on (I2C && HAS_DTS_I2C)
+	depends on I2C
 	help
 	  Enable driver for SI7210 Hall-effect sensors.

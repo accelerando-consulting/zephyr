@@ -54,7 +54,7 @@ static int lis2dh_channel_get(const struct device *dev,
 	int ofs_end;
 	int i;
 
-	switch (chan) {
+	switch ((int)chan) {
 	case SENSOR_CHAN_ACCEL_X:
 		ofs_start = ofs_end = 0;
 		break;
@@ -68,6 +68,22 @@ static int lis2dh_channel_get(const struct device *dev,
 		ofs_start = 0;
 		ofs_end = 2;
 		break;
+	case SENSOR_CHAN_LIS2DH_ADC1:
+		// The input range is 1200 mv ±400 mV and the data output is expressed in 2's complement left-aligned.
+		// The ADC resolution is 10 bits if the LPen (bit 3) in CTRL_REG1 (20h) is cleared (high- resolution / normal mode), otherwise, in low-power mode, the ADC resolution is 8-bit.
+		val->val1 = lis2dh->sample.adc[0]>>6;
+		val->val2 = 0;
+		return 0;
+	case SENSOR_CHAN_LIS2DH_ADC2:
+		// The input range is 1200 mv ±400 mV and the data output is expressed in 2's complement left-aligned.
+		val->val1 = lis2dh->sample.adc[1]>>6;
+		val->val2 = 0;
+		return 0;
+	case SENSOR_CHAN_LIS2DH_ADC3:
+		// The input range is 1200 mv ±400 mV and the data output is expressed in 2's complement left-aligned.
+		val->val1 = lis2dh->sample.adc[2]>>6;
+		val->val2 = 0;
+		return 0;
 	default:
 		return -ENOTSUP;
 	}
@@ -86,28 +102,62 @@ static int lis2dh_sample_fetch(const struct device *dev,
 	int status;
 
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL ||
-			chan == SENSOR_CHAN_ACCEL_XYZ);
+			chan == SENSOR_CHAN_ACCEL_XYZ ||
+			chan == SENSOR_CHAN_LIS2DH_ADC1 ||
+			chan == SENSOR_CHAN_LIS2DH_ADC2 ||
+			chan == SENSOR_CHAN_LIS2DH_ADC3
+		);
 
-	/*
-	 * since status and all accel data register addresses are consecutive,
-	 * a burst read can be used to read all the samples
-	 */
-	status = lis2dh->hw_tf->read_data(dev, LIS2DH_REG_STATUS,
-					  lis2dh->sample.raw,
-					  sizeof(lis2dh->sample.raw));
-	if (status < 0) {
-		LOG_WRN("Could not read accel axis data");
-		return status;
+
+	if (chan == SENSOR_CHAN_ALL ||
+	    chan == SENSOR_CHAN_ACCEL_XYZ) {
+		/*
+		 * since status and all accel data register addresses are consecutive,
+		 * a burst read can be used to read all the samples
+		 */
+		//LOG_INF("Read status and XYZ registers");
+		status = lis2dh->hw_tf->read_data(dev, LIS2DH_REG_STATUS,
+						  lis2dh->sample.raw,
+						  sizeof(lis2dh->sample.status)+sizeof(lis2dh->sample.xyz));
+		if (status < 0) {
+			LOG_WRN("Could not read accel axis data");
+			return status;
+		}
+
+		for (i = 0; i < (3 * sizeof(int16_t)); i += sizeof(int16_t)) {
+			int16_t *sample =
+				(int16_t *)&lis2dh->sample.raw[1 + i];
+
+			*sample = sys_le16_to_cpu(*sample);
+		}
+
+		if (lis2dh->sample.status & LIS2DH_STATUS_DRDY_MASK) {
+			return 0;
+		}
+		LOG_WRN("Status mask is 0x%02x", (int)lis2dh->sample.status);
 	}
 
-	for (i = 0; i < (3 * sizeof(int16_t)); i += sizeof(int16_t)) {
-		int16_t *sample =
-			(int16_t *)&lis2dh->sample.raw[1 + i];
+	// not an else-case
+	if (chan == SENSOR_CHAN_ALL ||
+	    chan == SENSOR_CHAN_LIS2DH_ADC1 ||
+	    chan == SENSOR_CHAN_LIS2DH_ADC2 ||
+	    chan == SENSOR_CHAN_LIS2DH_ADC3) {
 
-		*sample = sys_le16_to_cpu(*sample);
-	}
+		//LOG_INF("Read ADC registers");
 
-	if (lis2dh->sample.status & LIS2DH_STATUS_DRDY_MASK) {
+		/*
+		 * since all ADC data register addresses are consecutive,
+		 * a burst read can be used to read all the ADC samples
+		 */
+		status = lis2dh->hw_tf->read_data(dev, LIS2DH_REG_OUT_ADC1_L,
+						  (uint8_t *)lis2dh->sample.adc,
+						  sizeof(lis2dh->sample.adc));
+		if (status < 0) {
+			LOG_WRN("Could not read ADC data");
+			return status;
+		}
+		//LOG_HEXDUMP_INF(lis2dh->sample.adc, 6, "Raw ADC Registers (little-endian)");
+
 		return 0;
 	}
 
@@ -234,16 +284,52 @@ static int lis2dh_acc_config(const struct device *dev,
 	return 0;
 }
 
+static int lis2dh_adc_config(const struct device *dev,
+			     enum sensor_channel chan,
+			     enum sensor_attribute attr,
+			     const struct sensor_value *val)
+{
+	struct lis2dh_data *lis2dh = dev->data;
+	int err;
+	uint8_t ctrl4;
+	uint8_t temp_cfg;
+	//LOG_INF("lis2dh_adc_config");
+
+	switch ((int)attr) {
+	case SENSOR_ATTR_LIS2DH_ADCENABLE:
+		err = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL4,
+						LIS2DH_ADC_EN_BIT, val->val1?LIS2DH_ADC_EN_BIT:0);
+		if (err) {
+			LOG_ERR("Failed to update ctrl4");
+			return err;
+		}
+		break;
+	case SENSOR_ATTR_LIS2DH_TEMPENABLE:
+		err = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_TEMP_CFG,
+						LIS2DH_TEMP_EN_BIT, val->val1?LIS2DH_TEMP_EN_BIT:0);
+		break;
+	default:
+		LOG_ERR("ADC attribute %d not supported.", (int)attr);
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 static int lis2dh_attr_set(const struct device *dev, enum sensor_channel chan,
 			   enum sensor_attribute attr,
 			   const struct sensor_value *val)
 {
-	switch (chan) {
+	switch ((int)chan) {
 	case SENSOR_CHAN_ACCEL_X:
 	case SENSOR_CHAN_ACCEL_Y:
 	case SENSOR_CHAN_ACCEL_Z:
 	case SENSOR_CHAN_ACCEL_XYZ:
 		return lis2dh_acc_config(dev, chan, attr, val);
+	case SENSOR_CHAN_LIS2DH_ADC1:
+	case SENSOR_CHAN_LIS2DH_ADC2:
+	case SENSOR_CHAN_LIS2DH_ADC3:
+		return lis2dh_adc_config(dev, chan, attr, val);
 	default:
 		LOG_WRN("attr_set() not supported on this channel.");
 		return -ENOTSUP;

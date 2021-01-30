@@ -26,11 +26,24 @@
 #include <drivers/i2c.h>
 #endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c) */
 
+#define SENSOR_ATTR_LIS2DH_ADCENABLE    (SENSOR_ATTR_PRIV_START+1)
+#define SENSOR_ATTR_LIS2DH_TEMPENABLE   (SENSOR_ATTR_PRIV_START+2)
+
+#define SENSOR_CHAN_LIS2DH_ADC1         (SENSOR_CHAN_PRIV_START+1)
+#define SENSOR_CHAN_LIS2DH_ADC2         (SENSOR_CHAN_PRIV_START+2)
+#define SENSOR_CHAN_LIS2DH_ADC3         (SENSOR_CHAN_PRIV_START+3)
+
 #define LIS2DH_AUTOINCREMENT_ADDR	BIT(7)
+
+#define LIS2DH_REG_OUT_ADC1_L 0x08
 
 #define LIS2DH_REG_CTRL0		0x1e
 #define LIS2DH_SDO_PU_DISC_SHIFT	7
 #define LIS2DH_SDO_PU_DISC_MASK		BIT(LIS2DH_SDO_PU_DISC_SHIFT)
+
+#define LIS2DH_REG_TEMP_CFG             0x1f
+#define LIS2DH_TEMP_EN_BIT              BIT(6)
+#define LIS2DH_ADC_EN_BIT               BIT(7)
 
 #define LIS2DH_REG_CTRL1		0x20
 #define LIS2DH_ACCEL_XYZ_SHIFT		0
@@ -93,6 +106,7 @@
 #define LIS2DH_EN_DRDY1_INT1		BIT(LIS2DH_EN_DRDY1_INT1_SHIFT)
 
 #define LIS2DH_REG_CTRL4		0x23
+#define LIS2DH_BDU_BIT                  BIT(7)
 #define LIS2DH_FS_SHIFT			4
 #define LIS2DH_FS_MASK			(BIT_MASK(2) << LIS2DH_FS_SHIFT)
 
@@ -161,13 +175,14 @@
 #define LIS2DH_REG_INT2_DUR		0x37
 
 /* sample buffer size includes status register */
-#define LIS2DH_BUF_SZ			7
+#define LIS2DH_BUF_SZ			13
 
 union lis2dh_sample {
 	uint8_t raw[LIS2DH_BUF_SZ];
 	struct {
 		uint8_t status;
 		int16_t xyz[3];
+		int16_t adc[3];
 	} __packed;
 };
 

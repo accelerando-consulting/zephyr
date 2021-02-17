@@ -156,7 +156,7 @@ static int lis2dh_sample_fetch(const struct device *dev,
 			LOG_WRN("Could not read ADC data");
 			return status;
 		}
-		//LOG_HEXDUMP_INF(lis2dh->sample.adc, 6, "Raw ADC Registers (little-endian)");
+		LOG_HEXDUMP_DBG(lis2dh->sample.adc, 6, "Raw ADC Registers (little-endian)");
 
 		return 0;
 	}
@@ -291,16 +291,20 @@ static int lis2dh_adc_config(const struct device *dev,
 {
 	struct lis2dh_data *lis2dh = dev->data;
 	int err;
-	uint8_t ctrl4;
-	uint8_t temp_cfg;
-	//LOG_INF("lis2dh_adc_config");
 
 	switch ((int)attr) {
 	case SENSOR_ATTR_LIS2DH_ADCENABLE:
 		err = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL4,
+						LIS2DH_BDU_BIT, val->val1?LIS2DH_BDU_BIT:0);
+		if (err) {
+			LOG_ERR("Failed to update CTRL4 register");
+			return err;
+		}
+
+		err = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_TEMP_CFG,
 						LIS2DH_ADC_EN_BIT, val->val1?LIS2DH_ADC_EN_BIT:0);
 		if (err) {
-			LOG_ERR("Failed to update ctrl4");
+			LOG_ERR("Failed to update TEMP_CFG register");
 			return err;
 		}
 		break;

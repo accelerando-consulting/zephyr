@@ -49,168 +49,28 @@ static int si7210_reg_write(struct si7210_data *drv_data, uint8_t reg,
 		DT_INST_REG_ADDR(0), reg, val);
 }
 
-static int si7210_set_oneshot(struct si7210_data *drv_data, bool oneshot)
+static int si7210_set_oneshot(struct si7210_data *drv_data, bool oneshot) 
 {
-	return i2c_reg_update_byte(drv_data->i2c_dev,
-				   DT_INST_REG_ADDR(0),
-				   SI7210_REG_CTRL,
-				   BIT(SI7210_CTRL_BIT_ONEBURST)|BIT(SI7210_CTRL_BIT_STOP),
-				   oneshot?BIT(SI7210_CTRL_BIT_ONEBURST):0);
+	uint8_t ctrl;
+
+	if (si7210_reg_read(drv_data, SI7210_REG_CTRL, &ctrl) != 0) {
+		return -EIO;
+	}
+
+	if (oneshot) {
+		ctrl = ctrl | (1<<SI7210_CTRL_BIT_ONEBURST);
+	}
+	else {
+		ctrl = ctrl & ~(1<<SI7210_CTRL_BIT_ONEBURST);
+	}
+	ctrl = ctrl & ~(1<<SI7210_CTRL_BIT_STOP);
+
+	if (si7210_reg_write(drv_data, SI7210_REG_CTRL, ctrl) != 0) {
+		return -EIO;
+	}
+
 	return 0;
 }
-
-
-static int si7210_attr_set(const struct device *dev,
-			   enum sensor_channel chan,
-			   enum sensor_attribute attr,
-			   const struct sensor_value *val)
-{
-	struct si7210_data *drv_data = dev->data;
-	int err = 0;
-
-	if (chan != SENSOR_CHAN_MAGN_Z) {
-		LOG_WRN("attr_set() channel %d not supported.", (int)chan);
-		return -ENOTSUP;
-	}
-
-	switch ((int)attr) {
-	case SENSOR_ATTR_SI7210_OUTPUT_POLARITY:
-		// output pin polarity is register 4, bit 7 (sw_low4field)
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_TRIGGER_1,
-					  BIT(7),
-					  val->val1?BIT(7):0);
-		break;
-	case SENSOR_ATTR_SI7210_TRIGGER_POINT:
-		// output trigger value register 4, bits 6:0 (sw_op)
-		// threshold = (16 + sw_op[3 : 0] ) << sw_op[6:4]
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_TRIGGER_1,
-					  BIT_MASK(7),
-					  val->val1&BIT_MASK(7));
-		break;
-	case SENSOR_ATTR_SI7210_TRIGGER_HYSTERESIS:
-		// output trigger hysteresis is register 5, bits 5:0 (sw_hyst)
-		// hysteresis is (8 + sw_hyst[2:0] ) << sw_hyst[5:3]
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_TRIGGER_2,
-					  BIT_MASK(6),
-					  val->val1&BIT_MASK(6));
-		break;
-	case SENSOR_ATTR_SI7210_TRIGGER_POLARITY:
-		// output trigger polarity is register 5, bits 7:6 (sw_fieldpolsel)
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_TRIGGER_2,
-					  BIT_MASK(2)<<6,
-					  (val->val1&BIT_MASK(2))<<6);
-		break;
-	case SENSOR_ATTR_SI7210_USE_STORE:
-		// store the settings during sleep, or revert to OTP values
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_CTRL,
-					  BIT(SI7210_CTRL_BIT_USESTORE),
-					  (val->val1?BIT(SI7210_CTRL_BIT_USESTORE):0));
-		break;
-	case SENSOR_ATTR_SI7210_SLEEP_TIME:
-		// set the sleep time value
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_SLTIME,
-					  BIT_MASK(7),
-					  val->val1);
-		break;
-	case SENSOR_ATTR_SI7210_SLEEP_FAST:
-		// set the sleep fast bit 
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_SLOPT,
-					  BIT(SI7210_SLOPT_BIT_SLFAST),
-					  (val->val1?BIT(SI7210_SLOPT_BIT_SLFAST):0));
-		break;
-	case SENSOR_ATTR_SI7210_ONEBURST:
-		// set the oneburst value (and clear the stop bit)
-		err = i2c_reg_update_byte(drv_data->i2c_dev,
-					  DT_INST_REG_ADDR(0),
-					  SI7210_REG_CTRL,
-					  BIT(SI7210_CTRL_BIT_ONEBURST)|BIT(SI7210_CTRL_BIT_STOP),
-					  (val->val1?BIT(SI7210_CTRL_BIT_ONEBURST):0));
-		break;
-	default:
-		LOG_ERR("attr_set() attribute %d not supported.", (int)attr);
-		return -ENOTSUP;
-	}
-
-	return err;
-}
-
-static int si7210_attr_get(const struct device *dev,
-			   enum sensor_channel chan,
-			   enum sensor_attribute attr,
-			   struct sensor_value *val)
-{
-	struct si7210_data *drv_data = dev->data;
-	int err = 0;
-	uint8_t regval;
-
-	if (chan != SENSOR_CHAN_MAGN_Z) {
-		LOG_WRN("attr_set() channel %d not supported.", (int)chan);
-		return -ENOTSUP;
-	}
-
-	switch ((int)attr) {
-	case SENSOR_ATTR_SI7210_OUTPUT_POLARITY:
-		// output pin polarity is register 4, bit 7 (sw_low4field)
-		err = i2c_reg_read_byte(drv_data->i2c_dev,
-					DT_INST_REG_ADDR(0),
-					SI7210_REG_TRIGGER_1,
-					&regval);
-		if (!err) {
-			val->val1 = (regval >> 7) & BIT(0);
-		}
-		break;
-	case SENSOR_ATTR_SI7210_TRIGGER_POINT:
-		// output trigger value register 4, bits 6:0 (sw_op)
-		err = i2c_reg_read_byte(drv_data->i2c_dev,
-					DT_INST_REG_ADDR(0),
-					SI7210_REG_TRIGGER_1,
-					&regval);
-		if (!err) {
-			val->val1 = regval & BIT_MASK(6);
-		}
-		break;
-	case SENSOR_ATTR_SI7210_TRIGGER_HYSTERESIS:
-		// output trigger hysteresis is register 5, bits 5:0 (sw_hyst)
-		err = i2c_reg_read_byte(drv_data->i2c_dev,
-					DT_INST_REG_ADDR(0),
-					SI7210_REG_TRIGGER_1,
-					&regval);
-		if (!err) {
-			val->val1 = regval & BIT_MASK(5);
-		}
-		break;
-	case SENSOR_ATTR_SI7210_TRIGGER_POLARITY:
-		// output trigger polarity is register 5, bits 7:6 (sw_fieldpolsel)
-		err = i2c_reg_read_byte(drv_data->i2c_dev,
-					DT_INST_REG_ADDR(0),
-					SI7210_REG_TRIGGER_1,
-					&regval);
-		if (!err) {
-			val->val1 = (regval >> 6) & BIT_MASK(2);
-		}
-		break;
-	default:
-		LOG_ERR("attr_set() attribute %d not supported.", (int)attr);
-		return -ENOTSUP;
-	}
-
-	return err;
-}
-
 
 static int si7210_sample_fetch(const struct device *dev,
 			       enum sensor_channel chan)
@@ -221,7 +81,7 @@ static int si7210_sample_fetch(const struct device *dev,
 	uint8_t dspsigm;
 	uint8_t dspsigl;
 
-
+	
 	uint32_t busy = 0;
 	uint8_t ctrl;
 	while (busy > 10000) {
@@ -247,7 +107,7 @@ static int si7210_sample_fetch(const struct device *dev,
 				return err;
 			}
 		}
-
+		
 
 		if (!err) {
 			err = si7210_reg_read(drv_data, SI7210_REG_SIG_HIGH,
@@ -327,22 +187,20 @@ static int si7210_channel_get(const struct device *dev,
 	}
 	else if (chan == SENSOR_CHAN_AMBIENT_TEMP) {
 		uval = drv_data->temperature;
-		//LOG_INF("uval=0x%x", uval);
-
 		float temperature_raw = (-3.83e-6 * (uval * uval)) + (0.16094 * uval) - 279.80;
+
 		/*
-		LOG_INF("temperature_raw=%d.%d offset_raw=0x%02x gain_raw=0x%02x",
-			(int)temperature_raw,(int)(temperature_raw*1e6)%1000000,
+		LOG_INF("uval=0x%x", uval);
+		LOG_INF("temperature_raw=%f offset_raw=0x%02x gain_raw=0x%02x",
+			temperature_raw,
 			(unsigned int)drv_data->temp_offset, (unsigned int)drv_data->temp_gain);
 		*/
 		float offset = drv_data->temp_offset/16;
 		float gain = 1+(drv_data->temp_gain/2048);
 		float temperature = gain * temperature_raw + offset - (0.222 * 3.3);
 		uval = 1000000 * temperature;
-		/*
-		LOG_INF("calibrated temperature = %d.%d uval=%lu",
-			(int)temperature, (int)(temperature*1e6)%1000000, (unsigned long)uval);
-		*/
+		//LOG_INF("calibrated temperature = %f uval=%lu", temperature, (unsigned long)uval);
+
 		val->val1 = uval / 1000000;
 		val->val2 = uval % 1000000;
 		//LOG_INF("Temp = val1:%ld, val2:%ld", (long int)val->val1, (long int)val->val2);
@@ -357,13 +215,11 @@ static int si7210_channel_get(const struct device *dev,
 }
 
 static const struct sensor_driver_api si7210_api = {
-	.attr_set = &si7210_attr_set,
-	.attr_get = &si7210_attr_get,
 	.sample_fetch = &si7210_sample_fetch,
 	.channel_get = &si7210_channel_get,
 };
 
-static int si7210_init(const struct device *dev)
+static int si7210_chip_init(const struct device *dev)
 {
 	struct si7210_data *drv_data = dev->data;
 	uint8_t value;
@@ -395,7 +251,7 @@ static int si7210_init(const struct device *dev)
 	}
 	drv_data->temp_offset = svalue;
 	LOG_INF("Si7210 calibration offset is 0x%02x", (int)svalue);
-
+	
 
 	if (si7210_reg_read(drv_data, SI7210_REG_TEMP_GAIN, &svalue) != 0) {
 		LOG_ERR("Temp gain read failed");
@@ -408,9 +264,18 @@ static int si7210_init(const struct device *dev)
 	return 0;
 }
 
+static int si7210_init(const struct device *dev)
+{
+	//LOG_INF("si7210_init\n");
+	
+	if (si7210_chip_init(dev) < 0) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static struct si7210_data si_data;
 
-DEVICE_DT_INST_DEFINE(0, si7210_init, device_pm_control_nop,
+DEVICE_AND_API_INIT(si7210, DT_INST_LABEL(0), si7210_init,
 	&si_data, NULL, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &si7210_api);
-
-

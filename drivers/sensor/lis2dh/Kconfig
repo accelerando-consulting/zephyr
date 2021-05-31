@@ -35,12 +35,24 @@ endchoice
 config LIS2DH_TRIGGER
 	bool
 
+config LIS2DH_TRIGGER_ANYM_INT1
+	bool "Use INT1 for any-motion trigger instead of INT2"
+	depends on LIS2DH_TRIGGER
+
 config LIS2DH_THREAD_PRIORITY
 	int "Thread priority"
 	depends on LIS2DH_TRIGGER_OWN_THREAD
 	default 10
 	help
 	  Priority of thread used by the driver to handle interrupts.
+
+config LIS2DH_INTERRUPT_ACTIVE_LOW
+	bool "Set interrupt pins to active low"
+	depends on LIS2DH_TRIGGER
+	default false
+	help
+	  Default mode of interrupt pins is active high.
+	  Enable this option to invert the pins to active low.
 
 config LIS2DH_THREAD_STACK_SIZE
 	int "Thread stack size"
@@ -71,6 +83,55 @@ config LIS2DH_ACCEL_RANGE_16G
 	bool "+/-16g"
 
 endchoice
+
+config LIS2DH_ACT_RUNTIME
+	bool "Enable setting of activity-based mode switch at runtime"
+	default false
+
+choice
+	prompt "High-pass Filter mode"
+	default LIS2DH_HP_MODE_NORMAL
+	help
+	  Use of high-pass filter to subtract DC component of acceleration.
+
+config LIS2DH_HP_MODE_NORMAL
+	bool "NORMAL - read REFERENCE register to reset DC correction"
+
+config LIS2DH_HP_MODE_REFERENCE
+	bool "REFERENCE - subtract content of REFERENCE register from readings"
+
+config LIS2DH_HP_MODE_AUTORESET
+	bool "AUTORESET - reset REFERENCE whenever an interrupt occurs"
+endchoice
+
+choice
+	prompt "High-pass Filter cutoff frequency"
+	default LIS2DH_HP_CUTOFF_50X
+	help
+	  Relative cutoff frequency of the high-pass filter
+
+config LIS2DH_HP_CUTOFF_50X
+	bool "High-Pass Filter cutoff freqency is ODR*50"
+
+config LIS2DH_HP_CUTOFF_100X
+	bool "High-Pass Filter cutoff freqency is ODR*100"
+
+config LIS2DH_HP_CUTOFF_200X
+	bool "High-Pass Filter cutoff freqency is ODR*200"
+
+config LIS2DH_HP_CUTOFF_400X
+	bool "High-Pass Filter cutoff freqency is ODR*400"
+endchoice
+
+
+config LIS2DH_HP_OUTPUT
+	bool "Apply high-pass filter to the acceleration output values"
+
+config LIS2DH_HP_INT1
+	bool "Apply high-pass filter to the interrupt 1 algorithm"
+
+config LIS2DH_HP_INT2
+	bool "Apply high-pass filter to the interrupt 2 algorithm"
 
 choice
 	prompt "Operation mode"

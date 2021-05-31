@@ -33,6 +33,9 @@
 #define SENSOR_CHAN_LIS2DH_ADC2         (SENSOR_CHAN_PRIV_START+2)
 #define SENSOR_CHAN_LIS2DH_ADC3         (SENSOR_CHAN_PRIV_START+3)
 
+#define SENSOR_ATTR_LIS2DH_ACT_TH       (SENSOR_ATTR_PRIV_START+3)
+#define SENSOR_ATTR_LIS2DH_ACT_DUR      (SENSOR_ATTR_PRIV_START+4)
+
 #define LIS2DH_AUTOINCREMENT_ADDR	BIT(7)
 
 #define LIS2DH_REG_OUT_ADC1_L 0x08
@@ -101,6 +104,43 @@
 #define LIS2DH_HPIS2_EN_BIT		BIT(1)
 #define LIS2DH_FDS_EN_BIT		BIT(3)
 
+#if defined(CONFIG_LIS2DH_HP_MODE_NORMAL)
+#define LIS2DH_HPM_BITS                 0
+#elif defined(CONFIG_LIS2DH_HP_MODE_REFERENCE)
+#define LIS2DH_HPM_BITS                 BIT(6)
+#elif defined(CONFIG_LIS2DH_HP_MODE_AUTORESET)
+#define LIS2DH_HPM_BITS                 BIT(7)|BIT(6)
+#endif
+
+#ifdef CONFIG_LIS2DH_HP_OUTPUT
+#define LIS2DH_FDS_BIT                  BIT(3)
+#else
+#define LIS2DH_FDS_BIT                  0
+#endif
+
+#ifdef CONFIG_LIS2DH_HP_INT1
+#define LIS2DH_HP_IA1_BIT               BIT(0)
+#else
+#define LIS2DH_HP_IA1_BIT               0
+#endif
+
+#ifdef CONFIG_LIS2DH_HP_INT2
+#define LIS2DH_HP_IA2_BIT               BIT(1)
+#else
+#define LIS2DH_HP_IA2_BIT               0
+#endif
+
+#if defined(CONFIG_LIS2DH_HP_CUTOFF_50X)
+#define LIS2DH_HPCF_BITS                0
+#elif defined(CONFIG_LIS2DH_HP_CUTOFF_100X)
+#define LIS2DH_HPCF_BITS                BIT(4)
+#elif defined(CONFIG_LIS2DH_HP_CUTOFF_200X)
+#define LIS2DH_HPCF_BITS                BIT(5)
+#elif defined(CONFIG_LIS2DH_HP_CUTOFF_400X)
+#define LIS2DH_HPCF_BITS                BIT(4)|BIT(5)
+#endif
+
+
 #define LIS2DH_REG_CTRL3		0x22
 #define LIS2DH_EN_DRDY1_INT1_SHIFT	4
 #define LIS2DH_EN_DRDY1_INT1		BIT(LIS2DH_EN_DRDY1_INT1_SHIFT)
@@ -136,6 +176,7 @@
 #define LIS2DH_REG_CTRL6		0x25
 #define LIS2DH_EN_INT2_INT2_SHIFT	5
 #define LIS2DH_EN_INT2_INT2		BIT(LIS2DH_EN_INT2_INT2_SHIFT)
+#define LIS2DH_INT_POLARITY_BIT		BIT(5)
 
 #define LIS2DH_REG_REFERENCE		0x26
 
@@ -159,6 +200,7 @@
 #define LIS2DH_REG_ACCEL_Z_MSB		0x2D
 
 #define LIS2DH_REG_INT1_CFG		0x30
+#define LIS2DH_REG_INT1_SRC		0x31
 #define LIS2DH_REG_INT2_CFG		0x34
 #define LIS2DH_AOI_CFG			BIT(7)
 #define LIS2DH_INT_CFG_ZHIE_ZUPE	BIT(5)
@@ -173,6 +215,10 @@
 #define LIS2DH_REG_INT2_THS		0x36
 
 #define LIS2DH_REG_INT2_DUR		0x37
+
+#define LIS2DH_REG_ACT_THS              0x3e
+
+#define LIS2DH_REG_ACT_DUR              0x3f
 
 /* sample buffer size includes status register */
 #define LIS2DH_BUF_SZ			13

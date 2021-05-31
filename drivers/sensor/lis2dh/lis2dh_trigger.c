@@ -133,13 +133,20 @@ static int lis2dh_trigger_anym_set(const struct device *dev,
 	int status;
 	uint8_t reg_val;
 
+
+#if defined(CONFIG_LIS2DH_TRIGGER_ANYM_INT1)
+	if (cfg->gpio_drdy.port == NULL) {
+		LOG_ERR("trigger_set AnyMotion-on-INT1 not supported");
+		return -ENOTSUP;
+	}
+	setup_int1(dev, false);
+#else
 	if (cfg->gpio_int.port == NULL) {
 		LOG_ERR("trigger_set AnyMotion int not supported");
 		return -ENOTSUP;
 	}
-
 	setup_int2(dev, false);
-
+#endif
 	/* cancel potentially pending trigger */
 	atomic_clear_bit(&lis2dh->trig_flags, TRIGGED_INT2);
 
@@ -170,7 +177,11 @@ static int lis2dh_start_trigger_int2(const struct device *dev)
 {
 	struct lis2dh_data *lis2dh = dev->data;
 
+#if defined(CONFIG_LIS2DH_TRIGGER_ANYM_INT1)
+	setup_int1(dev, true);
+#else
 	setup_int2(dev, true);
+#endif
 
 	return lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_INT2_CFG,
 					LIS2DH_ANYM_CFG);
@@ -252,7 +263,14 @@ static void lis2dh_gpio_int1_callback(const struct device *dev,
 
 	ARG_UNUSED(pins);
 
+#if defined(CONFIG_LIS2DH_TRIGGER_ANYM_INT1)
+	// we need to distinguish source between DRDY and ANYM
+	// FIXME: hack it for test
+	atomic_set_bit(&lis2dh->trig_flags, TRIGGED_INT2);
+#else
 	atomic_set_bit(&lis2dh->trig_flags, TRIGGED_INT1);
+#endif
+
 
 #if defined(CONFIG_LIS2DH_TRIGGER_OWN_THREAD)
 	k_sem_give(&lis2dh->gpio_sem);
@@ -261,6 +279,7 @@ static void lis2dh_gpio_int1_callback(const struct device *dev,
 #endif
 }
 
+#ifndef CONFIG_LIS2DH_TRIGGER_ANYM_INT1
 static void lis2dh_gpio_int2_callback(const struct device *dev,
 				      struct gpio_callback *cb, uint32_t pins)
 {
@@ -277,6 +296,7 @@ static void lis2dh_gpio_int2_callback(const struct device *dev,
 	k_work_submit(&lis2dh->work);
 #endif
 }
+#endif
 
 static void lis2dh_thread_cb(const struct device *dev)
 {
@@ -295,7 +315,13 @@ static void lis2dh_thread_cb(const struct device *dev)
 		return;
 	}
 
-	if (cfg->gpio_int.port &&
+#if CONFIG_LIS2DH_TRIGGER_ANYM_INT1
+	// Interrupt 2 is rerouted to the pin designated for interrupt 1
+	const struct device *gpio_int_port = cfg->gpio_drdy.port;
+#else
+	const struct device *gpio_int_port = cfg->gpio_int.port;
+#endif
+	if (gpio_int_port &&
 			unlikely(atomic_test_and_clear_bit(&lis2dh->trig_flags,
 			START_TRIG_INT2))) {
 		status = lis2dh_start_trigger_int2(dev);
@@ -314,6 +340,23 @@ static void lis2dh_thread_cb(const struct device *dev)
 			.chan = lis2dh->chan_drdy,
 		};
 
+		/* check source of interrupt */
+		uint8_t reg_val;
+		status = lis2dh->hw_tf->read_reg(dev, LIS2DH_REG_INT1_SRC,
+						 &reg_val);
+		if (status < 0) {
+			LOG_ERR("reading int1 src failed: %d", status);
+			return;
+		}
+		LOG_INF("@tick=%u int1_src=0x%x %c%c%c%c%c%c", k_cycle_get_32(), reg_val,
+			(reg_val&0x20)?'Z':' ',
+			(reg_val&0x10)?'z':' ',
+			(reg_val&0x08)?'Y':' ',
+			(reg_val&0x04)?'y':' ',
+			(reg_val&0x02)?'X':' ',
+			(reg_val&0x01)?'x':' '
+			);
+
 		if (likely(lis2dh->handler_drdy != NULL)) {
 			lis2dh->handler_drdy(dev, &drdy_trigger);
 		}
@@ -321,7 +364,7 @@ static void lis2dh_thread_cb(const struct device *dev)
 		return;
 	}
 
-	if (cfg->gpio_int.port &&
+	if (gpio_int_port &&
 			atomic_test_and_clear_bit(&lis2dh->trig_flags,
 			TRIGGED_INT2)) {
 		struct sensor_trigger anym_trigger = {
@@ -337,16 +380,23 @@ static void lis2dh_thread_cb(const struct device *dev)
 			LOG_ERR("clearing interrupt 2 failed: %d", status);
 			return;
 		}
+		LOG_INF("@tick=%u int2_src=0x%x %c%c%c%c%c%c", k_cycle_get_32(), reg_val,
+			(reg_val&0x20)?'Z':' ',
+			(reg_val&0x10)?'z':' ',
+			(reg_val&0x08)?'Y':' ',
+			(reg_val&0x04)?'y':' ',
+			(reg_val&0x02)?'X':' ',
+			(reg_val&0x01)?'x':' '
+			);
 
 		if (likely(lis2dh->handler_anymotion != NULL)) {
 			lis2dh->handler_anymotion(dev, &anym_trigger);
 		}
 
-		LOG_DBG("@tick=%u int2_src=0x%x", k_cycle_get_32(),
-			    reg_val);
 
 		return;
 	}
+	LOG_WRN("lis2dh callback did not handle any event");
 }
 
 #ifdef CONFIG_LIS2DH_TRIGGER_OWN_THREAD
@@ -375,6 +425,19 @@ int lis2dh_init_interrupt(const struct device *dev)
 	const struct lis2dh_config *cfg = dev->config;
 	int status;
 	uint8_t raw[2];
+
+#if defined(CONFIG_LIS2DH_INTERRUPT_ACTIVE_LOW)
+	/*
+	 * Set interrupt polarity to be inverted
+	 */
+	status = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL6,
+					   LIS2DH_INT_POLARITY_BIT,
+					   LIS2DH_INT_POLARITY_BIT);
+	if (status < 0) {
+		LOG_ERR("Could not configure interrupt polarity");
+		return status;
+	}
+#endif
 
 	/*
 	 * Setup INT1 (for DRDY) if defined in DT
@@ -434,6 +497,9 @@ check_gpio_int:
 	 * Setup INT2 (for Any Motion) if defined in DT
 	 */
 
+#ifndef CONFIG_LIS2DH_TRIGGER_ANYM_INT1
+	// this is not needed if interrupt 2 to is rerouted the pin designated for interrupt 1
+
 	/* setup any motion gpio interrupt */
 	if (!device_is_ready(cfg->gpio_int.port)) {
 		/* API may return false even when ptr is NULL */
@@ -469,7 +535,7 @@ check_gpio_int:
 	LOG_INF("%s: int2 on %s.%02u", dev->name,
 				       cfg->gpio_int.port->name,
 				       cfg->gpio_int.pin);
-
+#endif
 	/* disable interrupt 2 in case of warm (re)boot */
 	status = lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_INT2_CFG, 0);
 	if (status < 0) {
@@ -478,6 +544,7 @@ check_gpio_int:
 	}
 
 	(void)memset(raw, 0, sizeof(raw));
+	raw[0] = 0x80;//FIXME: remove?
 	status = lis2dh->hw_tf->write_data(dev, LIS2DH_REG_INT2_THS,
 					   raw, sizeof(raw));
 	if (status < 0) {
@@ -485,10 +552,17 @@ check_gpio_int:
 		return status;
 	}
 
-	/* enable interrupt 2 on int2 line */
+#if CONFIG_LIS2DH_TRIGGER_ANYM_INT1
+	/* enable interrupt 2 on int1 pin (normally used by DRDY) */
+	status = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL3,
+					   LIS2DH_EN_INT2_INT2,
+					   LIS2DH_EN_INT2_INT2);
+#else
+	/* enable interrupt 2 on int2 pin */
 	status = lis2dh->hw_tf->update_reg(dev, LIS2DH_REG_CTRL6,
 					   LIS2DH_EN_INT2_INT2,
 					   LIS2DH_EN_INT2_INT2);
+#endif
 
 	/* latch int2 line interrupt */
 	status = lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_CTRL5,
@@ -498,6 +572,8 @@ check_gpio_int:
 		return status;
 	}
 
+#ifndef CONFIG_LIS2DH_TRIGGER_ANYM_INT1
 end:
+#endif
 	return status;
 }

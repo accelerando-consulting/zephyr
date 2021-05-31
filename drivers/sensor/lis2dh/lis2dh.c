@@ -221,6 +221,22 @@ static int lis2dh_acc_odr_set(const struct device *dev, uint16_t freq)
 }
 #endif
 
+static int lis2dh_acc_hp_filter_reset(const struct device *dev, uint8_t val)
+{
+	// In REFERENCE mode, set the actual reference value as supplied
+	//
+	// In NORMAL or AUTORESET mode, reset the high-pass filter by
+	// reading the REFERENCE register (the value is irrelevant)
+	//
+	struct lis2dh_data *data = dev->data;
+#ifdef CONFIG_LIS2DH_HP_MODE_REFERENCE
+	return data->hw_tf->write_reg(dev, LIS2DH_REG_REFERENCE, val);
+#else
+	uint8_t _notused;
+	return data->hw_tf->read_reg(dev, LIS2DH_REG_REFERENCE, &_notused);
+#endif
+}
+
 #ifdef CONFIG_LIS2DH_ACCEL_RANGE_RUNTIME
 
 #define LIS2DH_RANGE_IDX_TO_VALUE(idx)		(1 << ((idx) + 1))
@@ -257,12 +273,38 @@ static int lis2dh_acc_range_set(const struct device *dev, int32_t range)
 }
 #endif
 
+#ifdef CONFIG_LIS2DH_ACT_RUNTIME
+int lis2dh_acc_act_set(const struct device *dev,
+		       enum sensor_attribute attr,
+		       const struct sensor_value *val)
+{
+       struct lis2dh_data *lis2dh = dev->data;
+       int status;
+
+       // Configure the chip to vary mode based on acceleration
+
+       if (attr == SENSOR_ATTR_LIS2DH_ACT_TH) {
+	       if (val->val1 < 0 || val->val1 > 255) {
+		       return -ENOTSUP;
+	       }
+	       status = lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_ACT_THS, val->val1);
+       } else { /* SENSOR_ATTR_LIS2DH_ACT_DUR */
+	       if (val->val1 < 0 || val->val1 > 255) {
+		       return -ENOTSUP;
+	      }
+	       status = lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_ACT_DUR, val->val1);
+       }
+
+       return status;
+}
+#endif
+
 static int lis2dh_acc_config(const struct device *dev,
 			     enum sensor_channel chan,
 			     enum sensor_attribute attr,
 			     const struct sensor_value *val)
 {
-	switch (attr) {
+	switch ((int)attr) {
 #ifdef CONFIG_LIS2DH_ACCEL_RANGE_RUNTIME
 	case SENSOR_ATTR_FULL_SCALE:
 		return lis2dh_acc_range_set(dev, sensor_ms2_to_g(val));
@@ -271,11 +313,18 @@ static int lis2dh_acc_config(const struct device *dev,
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 		return lis2dh_acc_odr_set(dev, val->val1);
 #endif
+#ifdef CONFIG_LIS2DH_ACT_RUNTIME
+	case SENSOR_ATTR_LIS2DH_ACT_TH:
+	case SENSOR_ATTR_LIS2DH_ACT_DUR:
+		return lis2dh_acc_act_set(dev, attr, val);
+#endif
 #if defined(CONFIG_LIS2DH_TRIGGER)
 	case SENSOR_ATTR_SLOPE_TH:
 	case SENSOR_ATTR_SLOPE_DUR:
 		return lis2dh_acc_slope_config(dev, attr, val);
 #endif
+	case SENSOR_ATTR_CALIB_TARGET:
+		return lis2dh_acc_hp_filter_reset(dev, val?val->val1:0);
 	default:
 		LOG_DBG("Accel attribute not supported.");
 		return -ENOTSUP;
@@ -412,6 +461,18 @@ int lis2dh_init(const struct device *dev)
 		return status;
 	}
 
+	/* set high-pass filter mode (in CTRL_REG2) */
+	status = lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_CTRL2,
+					  LIS2DH_HPM_BITS |
+					  LIS2DH_HPCF_BITS |
+					  LIS2DH_FDS_BIT |
+					  LIS2DH_HP_IA2_BIT |
+					  LIS2DH_HP_IA1_BIT);
+	if (status < 0) {
+		LOG_ERR("Failed to set high-pass filter register.");
+		return status;
+	}
+
 	/* set full scale range and store it for later conversion */
 	lis2dh->scale = lis2dh_reg_val_to_scale[LIS2DH_FS_IDX];
 	status = lis2dh->hw_tf->write_reg(dev, LIS2DH_REG_CTRL4,
@@ -420,6 +481,7 @@ int lis2dh_init(const struct device *dev)
 		LOG_ERR("Failed to set full scale ctrl register.");
 		return status;
 	}
+
 
 #ifdef CONFIG_LIS2DH_TRIGGER
 	if (cfg->gpio_drdy.port != NULL || cfg->gpio_int.port != NULL) {

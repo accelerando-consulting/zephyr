@@ -410,7 +410,14 @@ static int si7210_init(const struct device *dev)
 
 static struct si7210_data si_data;
 
-DEVICE_DT_INST_DEFINE(0, si7210_init, device_pm_control_nop,
-	&si_data, NULL, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &si7210_api);
+DEVICE_DT_INST_DEFINE(
+	0,
+	si7210_init,
+	device_pm_control_nop,
+	&si_data,
+	NULL,
+	POST_KERNEL,
+	CONFIG_SENSOR_INIT_PRIORITY,
+	&si7210_api);
 
 

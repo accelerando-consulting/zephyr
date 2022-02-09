@@ -1,0 +1,5 @@
+# Accelerando Bungan (with eByte E104-BT5032A nRF52832 system on module) configuration
+
+config BOARD_ACCELERANDO_BUNGAN
+	bool "Accelerando Bungan"
+	depends on SOC_NRF52832_QFAA

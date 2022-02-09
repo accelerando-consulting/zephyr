@@ -1,0 +1,28 @@
+
+description: |
+    GPIO pins exposed on Wemos Lolin D1 Mini stacking bus.
+
+    The D1 Mini two 1x8-pin headers, one each along
+    opposite edges of the board (or in some versions, 2x8 or 2x10).
+
+    Proceeding counter-clockwise from top left:
+    * Left-hand-side  8-pin header, RST, 6xGPIO, 3v3
+    * Right-hand-side 8-pin header, 5v, Gnd, 4xGPIO, Rx, Tx
+
+    The original (ESP8266) Lolin D1 Mini names these pins as below,
+    the numbering is chosen for Zephyr semi-arbitrarily with the
+    goal of "least confusion" (i.e. Dn is PINn wherever possible)
+
+      9 - RESET      11 - Tx
+     10 - A0         12 - Rx
+      0 - D0          1 - D1/SCL
+      5 - D5/SCK      2 - D2/SDA
+      6 - D6/MISO     3 - D3
+      7 - D7/MOSI     4 - D4
+      8 - D8/SS         - GND
+        - 3v3           - 5v
+
+
+compatible: "lolin-d1-bus"
+
+include: [gpio-nexus.yaml, base.yaml]

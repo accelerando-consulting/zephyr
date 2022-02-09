@@ -1,0 +1,10 @@
+identifier: accelerando_barangaroo
+name: Accelerando Barangaroo (with eByte E73-2G4M04S1B nRF52832 system on module)
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 64
+flash: 512

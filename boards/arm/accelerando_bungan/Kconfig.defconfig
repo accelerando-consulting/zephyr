@@ -1,0 +1,11 @@
+# Accelerando Bungan (with eByte E104-BT5032A nRF52832 system on module) configuration
+
+if BOARD_ACCELERANDO_BUNGAN
+
+config BOARD
+	default "accelerando_bungan"
+
+config BT_CTLR
+	default BT
+
+endif 

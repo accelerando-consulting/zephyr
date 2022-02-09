@@ -1,0 +1,14 @@
+identifier: holyiot_yj14001
+name: Holyiot YJ-14001
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 16
+supported:
+  - ble
+testing:
+  ignore_tags:
+    - net

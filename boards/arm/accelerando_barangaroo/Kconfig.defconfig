@@ -1,0 +1,11 @@
+# Accelerando Barangaroo (with eByte E73-2G4M04S1B nRF52832 system on module) configuration
+
+if BOARD_ACCELERANDO_BARANGAROO
+
+config BOARD
+	default "accelerando_barangaroo"
+
+config BT_CTLR
+	default BT
+
+endif 

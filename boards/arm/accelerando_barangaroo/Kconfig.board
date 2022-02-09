@@ -1,0 +1,5 @@
+# Accelerando Barangaroo (with eByte E73-2G4M04S1B nRF52832 system on module) configuration
+
+config BOARD_ACCELERANDO_BARANGAROO
+	bool "Accelerando Barangaroo"
+	depends on SOC_NRF52832_QFAA

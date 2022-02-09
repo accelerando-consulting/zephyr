@@ -1,0 +1,10 @@
+identifier: ebyte_e104_bt5032a
+name: eByte E104-BT5032A nRF52832 system on module
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 64
+flash: 512

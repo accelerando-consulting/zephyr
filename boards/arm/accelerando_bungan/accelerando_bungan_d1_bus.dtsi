@@ -1,0 +1,26 @@
+/ {
+  d1_bus: connector {
+    compatible = "lolin-d1-bus";
+    #gpio-cells = <1>;
+    gpio-map-mask = <0xffffffff>;
+    gpio-map-pass-thru = <0>;
+
+    gpio-map = <0  0 &gpio0 26 0>, /* D0 */
+               <1  0 &gpio0 20 0>, /* D1/SCL */
+               <2  0 &gpio0 19 0>, /* D2/SDA */
+               <3  0 &gpio0 7  0>, /* D3 */
+               <4  0 &gpio0 0  0>, /* D4 */
+               <5  0 &gpio0 27 0>, /* D5/SCK */
+               <6  0 &gpio0 28 0>, /* D6/MISO */
+               <7  0 &gpio0 29 0>, /* D7/MOSI */
+               <8  0 &gpio0 30 0>, /* D8/SS */
+               <9  0 &gpio0 0  0>, /* RST */
+               <10 0 &gpio0 0  0>, /* A0 */
+               <11 0 &gpio0 18 0>, /* Tx */
+               <12 0 &gpio0 14 0>; /* Rx */
+     };
+};
+
+d1_serial: &uart0 {};
+d1_i2c: &i2c0 {};
+d1_spi: &spi1 {};

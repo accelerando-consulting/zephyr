@@ -1,0 +1,8 @@
+# Holyiot YJ-14001 board configuration
+
+# Copyright (c) 2022 Christoppher Biggs <christopher@biggs.id.au>
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_HOLYIOT_YJ14001
+	bool "Holyiot YJ-14001"
+	depends on SOC_NRF51822_QFAA

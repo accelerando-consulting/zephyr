@@ -1,0 +1,11 @@
+# eByte E73-2G4M04S1B nRF52832 system on module configuration
+
+if BOARD_EBYTE_E73_2G4M04S1B
+
+config BOARD
+	default "ebyte_e73_2g4m04s1b"
+
+config BT_CTLR
+	default BT
+
+endif 

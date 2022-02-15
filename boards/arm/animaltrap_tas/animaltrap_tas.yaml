@@ -1,0 +1,14 @@
+identifier: animaltrap_tas
+name: AnimalTrap TAS (eByte E73-2G4M08S1C nrf52840 System-on-module)
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - adc
+  - ble
+  - i2c
+  - watchdog
+  - counter

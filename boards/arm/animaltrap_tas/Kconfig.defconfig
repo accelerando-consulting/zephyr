@@ -1,0 +1,14 @@
+# AnimalTrap TAS (eByte E73-2G4M08S1C nrf52840 System-on-module) configuration
+
+if BOARD_ANIMALTRAP_TAS
+
+config BOARD
+	default "animaltrap_tas"
+
+config I2C
+	default y
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_ANIMALTRAP_TAS

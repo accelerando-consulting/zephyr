@@ -1,0 +1,5 @@
+# AnimalTrap TAS (eByte E73-2G4M08S1C nrf52840 System-on-module) configuration
+
+config BOARD_ANIMALTRAP_TAS
+	bool "AnimalTrap TAS"
+	depends on SOC_NRF52840_QIAA

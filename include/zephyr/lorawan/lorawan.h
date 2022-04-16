@@ -296,6 +296,19 @@ void lorawan_enable_adr(bool enable);
 int lorawan_set_datarate(enum lorawan_datarate dr);
 
 /**
+ * @brief Set the LoRaWAN channel mask 
+ *
+ * Set the channel mask, which is a bit string of up to 96 bits spread over
+ * up to six uint16_t values.  Channel N is word [n/16] bit (1<<(n%16))
+ *
+ * @param channel_mask bit mask of channels
+ * @param channel_max maximum significant bit in the mask
+ *
+ * @return 0 if successful, negative errno code if failure
+ */
+int lorawan_set_channel_mask(uint16_t *channel_mask, uint8_t channel_max);
+
+/**
  * @brief Get the minimum possible datarate
  *
  * The minimum possible datarate may change in response to a TxParamSetupReq

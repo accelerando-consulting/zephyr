@@ -11,6 +11,50 @@
 
 #include <LoRaMac.h>
 
+static const char *const mcps2str[] = {
+    [MCPS_UNCONFIRMED]="Unconfirmed frame",
+    [MCPS_CONFIRMED]="Confirmed frame",
+    [MCPS_MULTICAST]="Multicast frame",
+    [MCPS_PROPRIETARY]="Proprietary frame"
+};
+
+const char *lorawan_mcps2str(unsigned int mcps)
+{
+	if (mcps < ARRAY_SIZE(mcps2str)) {
+		return mcps2str[mcps];
+	} else {
+		return "Unknown mcps frame type!";
+	}
+}
+
+
+static const char *const mlme2str[] = {
+    [MLME_UNKNOWN]="Unknown",
+    [MLME_JOIN]="Join",
+    [MLME_REJOIN_0]="Rejoin type 0",
+    [MLME_REJOIN_1]="Rejoin type 1",
+    [MLME_LINK_CHECK]="Link check",
+    [MLME_TXCW]="TX continuouse wave mode",
+    [MLME_SCHEDULE_UPLINK]="schedule uplink",
+    [MLME_DERIVE_MC_KE_KEY]="Derive McKEKey",
+    [MLME_DERIVE_MC_KEY_PAIR]="Derive multicast group keypair",
+    [MLME_DEVICE_TIME]="Initiate DeviceTimeReq",
+    [MLME_BEACON]="Initiate beacon reception",
+    [MLME_BEACON_ACQUISITION]="Initiate beacon acquisition",
+    [MLME_PING_SLOT_INFO]="Initate ping slot info request",
+    [MLME_BEACON_TIMING]="Initiate beacon timing request",
+    [MLME_BEACON_LOST]="Lost beacon"
+};
+
+const char *lorawan_mlme2str(unsigned int mlme)
+{
+	if (mlme < ARRAY_SIZE(mlme2str)) {
+		return mlme2str[mlme];
+	} else {
+		return "Unknown mlme request type!";
+	}
+}
+
 static const char *const status2str[] = {
 	[LORAMAC_STATUS_OK] = "OK",
 	[LORAMAC_STATUS_BUSY] = "Busy",

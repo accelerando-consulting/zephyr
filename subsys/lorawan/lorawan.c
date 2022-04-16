@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <lorawan/lorawan.h>
 #include <zephyr.h>
+#include <stdio.h>
 
 #include "lw_priv.h"
 
@@ -74,6 +75,7 @@ static LoRaMacEventInfoStatus_t last_mlme_indication_status;
 
 static uint8_t (*getBatteryLevelUser)(void);
 static void (*dr_change_cb)(enum lorawan_datarate dr);
+static void log_channel_mask(uint16_t *ChannelsMask, const char *msg);
 
 void BoardGetUniqueId(uint8_t *id)
 {
@@ -89,8 +91,85 @@ static uint8_t getBatteryLevelLocal(void)
 	return 255;
 }
 
+static void OnNvmDataChange(uint16_t flags) 
+{
+	LOG_INF("OnNvmDataChange flags=0x%04X", (int)flags);
+
+	MibRequestConfirm_t mibGet;
+	LoRaMacStatus_t status;
+	mibGet.Type = MIB_NVM_CTXS;
+	status = LoRaMacMibGetRequestConfirm(&mibGet);
+	if (status != LORAMAC_STATUS_OK) {
+		LOG_ERR("Crypto status fetch failed: %d(%s)",
+			(int)status, lorawan_status2str(status));
+		return;
+	}
+	//LoRaMacNvmData_t *nvm = mibGet.Param.Contexts;
+	
+	// TODO nocommit: store key elements to NVM
+/*
+	if (flags & LORAMAC_NVM_NOTIFY_FLAG_CRYPTO) {
+	LOG_INF("TODO: save crypto state");
+		LoRaMacCryptoNvmData_t *crypto = &nvm->Crypto;
+		LOG_INF("Crypto NVM:  LrWanVersion=0x%08X",(uint32_t)crypto->LrWanVersion.Value);
+		LOG_INF("Crypto NVM:      devNonce=0x%04X",(uint32_t)crypto->DevNonce);
+		LOG_INF("Crypto NVM:     joinNonce=0x%08X",(uint32_t)crypto->JoinNonce);
+		LOG_INF("Crypto NVM:        FCntUp=0x%08X",(uint32_t)crypto->FCntList.FCntUp);
+		LOG_INF("Crypto NVM:     NFCntDown=0x%08X",(uint32_t)crypto->FCntList.NFCntDown);
+		LOG_INF("Crypto NVM:     AFCntDown=0x%08X",(uint32_t)crypto->FCntList.AFCntDown);
+		for (int c=0; c<LORAMAC_MAX_MC_CTX; c++) {
+			LOG_INF("Crypto NVM:  McFcntDown.%d=0x%08X",c, (uint32_t)crypto->FCntList.McFCntDown[c]);
+		}
+#if( USE_LRWAN_1_1_X_CRYPTO == 1 )
+		LOG_INF("Crypto NVM:     RJCount1=0x%08X",(uint32_t)crypto->FCntList.RJcount1);
+#endif
+		LOG_INF("Crypto NVM: LastDownFCnt=0x%08X",(uint32_t)crypto->LastDownFCnt);
+
+		LOG_INF("Crypto NVM:	Crc32=0x%08X",(uint32_t)crypto->Crc32);
+	}
+	if (flags & LORAMAC_NVM_NOTIFY_FLAG_MAC_GROUP1) {
+	LOG_INF("TODO: save group1 state");
+
+		LoRaMacNvmDataGroup1_t *mac1 = &nvm->MacGroup1;
+		LOG_INF("Group1 NVM:     AdrAckCounter=0x%08X", (uint32_t)mac1->AdrAckCounter);
+		LOG_INF("Group1 NVM:    LastTxDoneTime=0x%08X", (uint32_t)mac1->LastTxDoneTime);
+		LOG_INF("Group1 NVM: AggregatedTimeOff=0x%08X", (uint32_t)mac1->AggregatedTimeOff);
+		LOG_INF("Group1 NVM:         LastRxMic=0x%08X", (uint32_t)mac1->LastRxMic);
+		LOG_INF("Group1 NVM:   ChannelsTxPower=0x%02X", (uint32_t)mac1->ChannelsTxPower);
+		LOG_INF("Group1 NVM:  ChannelsDatarate=0x%02X", (uint32_t)mac1->ChannelsDatarate);
+		LOG_INF("Group1 NVM:   SrvAckRequested=%d",     (uint32_t)mac1->SrvAckRequested);
+		LOG_INF("Group1 NVM:             Crc32=0x%08X", (uint32_t)mac1->Crc32);
+		//LOG_HEXDUMP_DBG(&nvm->MacGroup1, sizeof(nvm->MacGroup1),
+		"nvm.MacGroup1");
+	}
+	if (flags & LORAMAC_NVM_NOTIFY_FLAG_MAC_GROUP2) {
+		LOG_WRN("Saving not implemented for nvm.MacGroup2");
+		//LOG_HEXDUMP_DBG(&nvm->MacGroup2, sizeof(nvm->MacGroup2), "nvm.MacGroup2");
+	}
+	if (flags & LORAMAC_NVM_NOTIFY_FLAG_SECURE_ELEMENT) {
+		LOG_WRN("Saving not implemented for nvm.SecureElement");
+		//LOG_HEXDUMP_DBG(&nvm->SecureElement, sizeof(nvm->SecureElement), "nvm.SecureElement");
+	}
+	if (flags & LORAMAC_NVM_NOTIFY_FLAG_REGION_GROUP1) {
+		LOG_WRN("Saving not implemented for nvm.RegionGroup1");
+		//LOG_HEXDUMP_DBG(&nvm->RegionGroup1, sizeof(nvm->RegionGroup1), "nvm.RegionGroup1");
+	}
+	if (flags & LORAMAC_NVM_NOTIFY_FLAG_REGION_GROUP2) {
+		LOG_WRN("Saving not implemented for nvm.RegionGroup1");
+		//LOG_HEXDUMP_DBG(&nvm->RegionGroup2, sizeof(nvm->RegionGroup2), "nvm.RegionGroup2");
+	}
+	if (flags & LORAMAC_NVM_NOTIFY_FLAG_CLASS_B) {
+		LOG_WRN("Saving not implemented for nvm.ClassB");
+		//LOG_HEXDUMP_DBG(&nvm->ClassB, sizeof(nvm->ClassB), "nvm.ClassB");
+	}
+*/	
+	
+}
+
+
 static void OnMacProcessNotify(void)
 {
+	LOG_INF("OnMacProcessNotify");
 	LoRaMacProcess();
 }
 
@@ -113,8 +192,10 @@ static void datarate_observe(bool force_notification)
 
 static void McpsConfirm(McpsConfirm_t *mcpsConfirm)
 {
-	LOG_DBG("Received McpsConfirm (for McpsRequest %d)",
-		mcpsConfirm->McpsRequest);
+	LOG_DBG("Received McpsConfirm (for McpsRequest %d:[%s])",
+		mcpsConfirm->McpsRequest,
+		lorawan_mlme2str(mcpsConfirm->McpsRequest));
+
 
 	if (mcpsConfirm->Status != LORAMAC_EVENT_INFO_STATUS_OK) {
 		LOG_ERR("McpsRequest failed : %s",
@@ -168,8 +249,9 @@ static void MlmeConfirm(MlmeConfirm_t *mlmeConfirm)
 {
 	MibRequestConfirm_t mibGet;
 
-	LOG_DBG("Received MlmeConfirm (for MlmeRequest %d)",
-		mlmeConfirm->MlmeRequest);
+	LOG_DBG("Received MlmeConfirm (for MlmeRequest %d:[%s])",
+		mlmeConfirm->MlmeRequest,
+		lorawan_mlme2str(mlmeConfirm->MlmeRequest));
 
 	if (mlmeConfirm->Status != LORAMAC_EVENT_INFO_STATUS_OK) {
 		LOG_ERR("MlmeConfirm failed : %s",
@@ -188,6 +270,7 @@ static void MlmeConfirm(MlmeConfirm_t *mlmeConfirm)
 		LOG_INF("Link check not implemented yet!");
 		break;
 	default:
+		LOG_INF("No confirm handler for this request type");
 		break;
 	}
 
@@ -273,6 +356,8 @@ static LoRaMacStatus_t lorawan_join_abp(
 
 int lorawan_join(const struct lorawan_join_config *join_cfg)
 {
+	LOG_INF("lorawan_join");
+	
 	MibRequestConfirm_t mib_req;
 	LoRaMacStatus_t status;
 	int ret = 0;
@@ -400,6 +485,34 @@ int lorawan_set_datarate(enum lorawan_datarate dr)
 	return 0;
 }
 
+int lorawan_set_channel_mask(uint16_t *channel_mask, uint8_t channel_max) 
+{
+	uint16_t new_channel_mask[6]={0x0000,0x0000,0x0000,0x0000,0x0000,0x0000};
+	for (int w=0; w<channel_max/16; w++) {
+		new_channel_mask[w] |= channel_mask[w];
+	}
+	log_channel_mask(new_channel_mask, "lorawan_set_channel_mask");
+	ChanMaskSetParams_t params = {new_channel_mask, CHANNELS_MASK};
+
+	// Update the channel mask bitset
+	if (RegionChanMaskSet(LORAWAN_REGION, &params)) {
+	}
+	else {
+		LOG_ERR("Channel mask update failed");
+		return -EIO;
+	}
+
+#if 0
+	// Read back the channel mask 
+	GetPhyParams_t phy_params;
+	PhyParam_t phy_param;
+	phy_params.Attribute = PHY_CHANNELS_MASK;
+	phy_param = RegionGetPhyParam(LORAWAN_REGION, &phy_params);
+	log_channel_mask(phy_param.ChannelsMask, "lorawan_set_channel_mask new value");
+#endif
+	return 0;
+}
+
 void lorawan_get_payload_sizes(uint8_t *max_next_payload_size,
 			       uint8_t *max_payload_size)
 {
@@ -450,6 +563,7 @@ int lorawan_set_conf_msg_tries(uint8_t tries)
 
 int lorawan_send(uint8_t port, uint8_t *data, uint8_t len, uint8_t flags)
 {
+	LOG_INF("lorawan_send");
 	LoRaMacStatus_t status;
 	McpsReq_t mcpsReq;
 	LoRaMacTxInfo_t txInfo;
@@ -457,6 +571,7 @@ int lorawan_send(uint8_t port, uint8_t *data, uint8_t len, uint8_t flags)
 	bool empty_frame = false;
 
 	if (data == NULL) {
+		LOG_ERR("lorawan_send: invalid data");
 		return -EINVAL;
 	}
 
@@ -509,9 +624,13 @@ int lorawan_send(uint8_t port, uint8_t *data, uint8_t len, uint8_t flags)
 	 * both success and failure cases after a specific time period.
 	 * So we can use K_FOREVER and no need to check the return val.
 	 */
+	LOG_INF("lorawan_send: waiting for completion");
 	k_sem_take(&mcps_confirm_sem, K_FOREVER);
 	if (last_mcps_confirm_status != LORAMAC_EVENT_INFO_STATUS_OK) {
 		ret = lorawan_eventinfo2errno(last_mcps_confirm_status);
+		if (ret != 0) {
+			LOG_WRN("Last LoRaWAN result was error %d", ret);
+		}
 	}
 
 	/*
@@ -519,6 +638,7 @@ int lorawan_send(uint8_t port, uint8_t *data, uint8_t len, uint8_t flags)
 	 * it has to resend the packet.
 	 */
 	if (empty_frame) {
+		LOG_WRN("Data was not sent, EAGAIN");
 		ret = -EAGAIN;
 	}
 
@@ -548,8 +668,44 @@ void lorawan_register_dr_changed_callback(void (*cb)(enum lorawan_datarate))
 	dr_change_cb = cb;
 }
 
+static void log_channel_mask(uint16_t *ChannelsMask, const char *msg) 
+{
+	char buf[80];
+	int pos = 0;
+	pos += snprintf(buf+pos, sizeof(buf)-pos, "%s: ", msg);
+	// unscramble the little endian byte order of the channel mask
+	for (int word=0; word<6; word++) {
+		pos += snprintf(buf+pos, sizeof(buf)-pos, "%04x ",
+				ChannelsMask[word]);
+	}
+	LOG_INF("%s", buf);
+
+#if 0
+	char channels[6*16*4+1];
+	int count = 0;
+	pos = 0;
+	for (int word=0; word<6; word++) {
+		for (int bit=0; bit<16; bit++) {
+			if (ChannelsMask[word] & (1<<bit)) {
+				if (count!=0) {
+					pos += snprintf(channels+pos,sizeof(channels)-pos,", ");
+				}
+				pos += snprintf(channels+pos,sizeof(channels)-pos,"%d", word*16+bit);
+				++count;
+			}
+
+		}
+	}
+	LOG_INF("Mask has %d active channel%s: %s",
+		count, log_strdup((count==1)?"":"s"), log_strdup(channels));
+#endif	
+}
+
+
 int lorawan_start(void)
 {
+	LOG_INF("lorawan_start");
+
 	LoRaMacStatus_t status;
 	MibRequestConfirm_t mib_req;
 	GetPhyParams_t phy_params;
@@ -568,16 +724,35 @@ int lorawan_start(void)
 	default_datarate = phy_param.Value;
 	current_datarate = default_datarate;
 
+	phy_params.Attribute = PHY_CHANNELS_DEFAULT_MASK;
+	phy_param = RegionGetPhyParam(LORAWAN_REGION, &phy_params);
+	log_channel_mask(phy_param.ChannelsMask, "default channel mask");
+
+	phy_params.Attribute = PHY_CHANNELS_MASK;
+	phy_param = RegionGetPhyParam(LORAWAN_REGION, &phy_params);
+	log_channel_mask(phy_param.ChannelsMask, "effective channel mask");
+	
+
 	/* TODO: Move these to a proper location */
 	mib_req.Type = MIB_SYSTEM_MAX_RX_ERROR;
 	mib_req.Param.SystemMaxRxError = CONFIG_LORAWAN_SYSTEM_MAX_RX_ERROR;
 	LoRaMacMibSetRequestConfirm(&mib_req);
+
+	/* Restore OTAA counter and nonce state */
+	LoRaMacNvmData_t *Contexts = NULL;// todo nocommit
+	mib_req.Type = MIB_NVM_CTXS;
+	mib_req.Param.Contexts = Contexts;
+	status = LoRaMacMibSetRequestConfirm(&mib_req);
+	if (status != LORAMAC_STATUS_OK) {
+		LOG_ERR("Error restoring LoRaWan context: %d(%s)", (int)status, lorawan_status2str((int)status));
+	}
 
 	return 0;
 }
 
 static int lorawan_init(const struct device *dev)
 {
+	LOG_INF("lorawan_init");
 	LoRaMacStatus_t status;
 
 	sys_slist_init(&dl_callbacks);
@@ -588,7 +763,7 @@ static int lorawan_init(const struct device *dev)
 	macPrimitives.MacMlmeIndication = MlmeIndication;
 	macCallbacks.GetBatteryLevel = getBatteryLevelLocal;
 	macCallbacks.GetTemperatureLevel = NULL;
-	macCallbacks.NvmDataChange = NULL;
+	macCallbacks.NvmDataChange = OnNvmDataChange;
 	macCallbacks.MacProcessNotify = OnMacProcessNotify;
 
 	status = LoRaMacInitialization(&macPrimitives, &macCallbacks,

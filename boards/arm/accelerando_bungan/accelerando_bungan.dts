@@ -1,7 +1,7 @@
 
 /dts-v1/;
 #include <nordic/nrf52832_qfaa.dtsi>
-#include <accelerando_bungan_d1_bus.dtsi>
+#include "accelerando_bungan_d1_bus.dtsi"
 
 / {
 	model = "Accelerando Bungan";

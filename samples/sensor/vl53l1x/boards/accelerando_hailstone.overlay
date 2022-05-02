@@ -1,0 +1,23 @@
+&i2c0 {
+	status = "okay";
+	sda-pin = <41>;
+	scl-pin = <5>;
+
+	vl53l1x@29 {
+		compatible = "st,vl53l1x";
+		reg = <0x29>;
+		label = "VL53L1X";
+	};
+	max44009@4a {
+                compatible = "maxim,max44009";
+                reg = <0x4a>;
+                label = "MAX44009";
+        };
+};
+
+&i2c1 {
+	status = "disabled";
+	sda-pin = <30>;
+	scl-pin = <31>;
+};
+

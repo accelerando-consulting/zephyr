@@ -1,0 +1,15 @@
+identifier: accelerando_korumba
+name: Accelerando Korumba
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 8
+flash: 32
+supported:
+  - gpio
+  - uart
+  - watchdog
+  - dma

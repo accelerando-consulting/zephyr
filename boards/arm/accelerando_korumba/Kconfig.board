@@ -1,0 +1,7 @@
+# Accelerando Korumba with STM32G030F6 
+
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_ACCELERANDO_KORUMBA
+	bool "Accelerando Korumba"
+	depends on SOC_STM32G030XX

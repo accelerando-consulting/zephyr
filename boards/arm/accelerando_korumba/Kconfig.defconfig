@@ -1,0 +1,10 @@
+# Accelerando Korumba configuration
+
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_ACCELERANDO_KORUMBA
+
+config BOARD
+	default "accelerando_korumba"
+
+endif # BOARD_ACCELERANDO_KORUMBA

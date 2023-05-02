@@ -89,6 +89,45 @@ static int lis2dh_sample_fetch_temp(const struct device *dev)
 	return ret;
 }
 
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+static int lis2dh_sample_fetch_adc(const struct device *dev)
+{
+	int ret = -ENOTSUP;
+
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+	struct lis2dh_data *lis2dh = dev->data;
+	const struct lis2dh_config *cfg = dev->config;
+	uint8_t raw[3*sizeof(uint16_t)];
+
+	ret = lis2dh->hw_tf->read_data(dev, cfg->adc.dout_addr, raw, sizeof(raw));
+
+	if (ret < 0) {
+		LOG_WRN("Failed to fetch raw ADC samples");
+		ret = -EIO;
+	} else {
+		/*
+		 * The three ADC values are in contiguous 2-byte little endian
+		 * registers.
+		 * 
+		 */
+		for (int i=0; i<3;i++) {
+			int ofs = i * 2;
+			lis2dh->adc[i].val2 = 0;
+			lis2dh->adc[i].val1 = raw[ofs] + (raw[ofs+1]<<8);
+			/*if (i==2) {
+				LOG_WRN("ADC %d value is %02x:%02x (%d, 0x%04x)", i, (int)raw[ofs], (int)raw[ofs+1], (int)lis2dh->adc[i].val1, (int)lis2dh->adc[i].val1);
+			}*/
+			
+		}
+	}
+#else
+	LOG_WRN("ADC measurement disabled");
+#endif
+
+	return ret;
+}
+#endif
+
 static int lis2dh_channel_get(const struct device *dev,
 			      enum sensor_channel chan,
 			      struct sensor_value *val)
@@ -98,7 +137,11 @@ static int lis2dh_channel_get(const struct device *dev,
 	int ofs_end;
 	int i;
 
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+	switch ((int)chan) { // ADC channels are above SENSOR_CHAN_PRIV_START
+#else
 	switch (chan) {
+#endif
 	case SENSOR_CHAN_ACCEL_X:
 		ofs_start = ofs_end = 0;
 		break;
@@ -115,6 +158,17 @@ static int lis2dh_channel_get(const struct device *dev,
 #ifdef CONFIG_LIS2DH_MEASURE_TEMPERATURE
 	case SENSOR_CHAN_DIE_TEMP:
 		memcpy(val, &lis2dh->temperature, sizeof(*val));
+		return 0;
+#endif
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+	case SENSOR_CHAN_LIS2DH_ADC_A:		
+		memcpy(val, &lis2dh->adc[0], sizeof(*val));
+		return 0;
+	case SENSOR_CHAN_LIS2DH_ADC_B:		
+		memcpy(val, &lis2dh->adc[1], sizeof(*val));
+		return 0;
+	case SENSOR_CHAN_LIS2DH_ADC_C:		
+		memcpy(val, &lis2dh->adc[2], sizeof(*val));
 		return 0;
 #endif
 	default:
@@ -172,10 +226,21 @@ static int lis2dh_sample_fetch(const struct device *dev,
 			status = lis2dh_sample_fetch_temp(dev);
 		}
 #endif
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+		if (status == 0) {
+			status = lis2dh_sample_fetch_adc(dev);
+		}
+#endif
 	} else if (chan == SENSOR_CHAN_ACCEL_XYZ) {
 		status = lis2dh_fetch_xyz(dev, chan);
 	} else if (chan == SENSOR_CHAN_DIE_TEMP) {
 		status = lis2dh_sample_fetch_temp(dev);
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+	} else if ((chan == SENSOR_CHAN_LIS2DH_ADC_A) ||
+		   (chan == SENSOR_CHAN_LIS2DH_ADC_B) ||
+		   (chan == SENSOR_CHAN_LIS2DH_ADC_C)) {
+		status = lis2dh_sample_fetch_adc(dev);
+#endif
 	} else {
 		__ASSERT(false, "Invalid sensor channel in fetch");
 	}
@@ -411,6 +476,24 @@ int lis2dh_init(const struct device *dev)
 		return status;
 	}
 #endif
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+	status = lis2dh->hw_tf->update_reg(dev, cfg->adc.cfg_addr,
+					   cfg->adc.enable_mask,
+					   cfg->adc.enable_mask);
+
+	if (status < 0) {
+		LOG_ERR("Failed to enable ADC measurement");
+		return status;
+	}
+	status = lis2dh->hw_tf->update_reg(dev, cfg->adc.cfg_addr_2,
+					   cfg->adc.enable_mask_2,
+					   cfg->adc.enable_mask_2);
+
+	if (status < 0) {
+		LOG_ERR("Failed to enable ADC measurement");
+		return status;
+	}
+#endif
 
 #ifdef CONFIG_LIS2DH_TRIGGER
 	if (cfg->gpio_drdy.port != NULL || cfg->gpio_int.port != NULL) {
@@ -549,6 +632,21 @@ static int lis2dh_pm_action(const struct device *dev,
 #define LIS2DH_CFG_TEMPERATURE(inst)
 #endif /* CONFIG_LIS2DH_MEASURE_TEMPERATURE */
 
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+/* LIS3DH has three analog input pins, controlled by a single enable pin in CTRL4 reg.
+ * There are three contiguous 2-byte little endian data registers starting at 0x08
+ */
+
+#define LIS2DH_CFG_ADC(inst)	\
+	.adc = { .cfg_addr = LIS2DH_REG_CTRL4,	\
+		 .enable_mask = BIT(7),	        \
+                 .cfg_addr_2 = 0x1F,	\
+		 .enable_mask_2 = BIT(7),	        \
+		 .dout_addr = 0x08 }
+#else
+#define LIS2DH_CFG_ADC(inst)
+#endif /* CONFIG_LIS2DH_MEASURE_ADC */
+
 #define LIS2DH_CONFIG_SPI(inst)						\
 	{								\
 		.bus_init = lis2dh_spi_init,				\
@@ -564,6 +662,7 @@ static int lis2dh_pm_action(const struct device *dev,
 			.anym_latch = ANYM_LATCH(inst),			\
 			.anym_mode = ANYM_MODE(inst), },		\
 		LIS2DH_CFG_TEMPERATURE(inst)				\
+		LIS2DH_CFG_ADC(inst)	 			        \
 		LIS2DH_CFG_INT(inst)					\
 	}
 
@@ -587,6 +686,7 @@ static int lis2dh_pm_action(const struct device *dev,
 			.anym_latch = ANYM_LATCH(inst),			\
 			.anym_mode = ANYM_MODE(inst), },		\
 		LIS2DH_CFG_TEMPERATURE(inst)				\
+		LIS2DH_CFG_ADC(inst)					\
 		LIS2DH_CFG_INT(inst)					\
 	}
 

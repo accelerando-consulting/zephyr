@@ -159,4 +159,9 @@ config LIS2DH_MEASURE_TEMPERATURE
 	  the reported temperature to a reference.
 	  This option does not apply to the LSM330DLHC.
 
+config LIS2DH_MEASURE_ADC
+	bool "General purpose analog-to-digital-conversion inputs A,B,C"
+	help
+	  The LIS3DH has three general purpose analog input pins.
+
 endif # LIS2DH

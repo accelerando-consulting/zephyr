@@ -26,6 +26,12 @@
 #include <zephyr/drivers/i2c.h>
 #endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c) */
 
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+#define SENSOR_CHAN_LIS2DH_ADC_A         (SENSOR_CHAN_PRIV_START+1)
+#define SENSOR_CHAN_LIS2DH_ADC_B         (SENSOR_CHAN_PRIV_START+2)
+#define SENSOR_CHAN_LIS2DH_ADC_C         (SENSOR_CHAN_PRIV_START+3)
+#endif
+
 #define LIS2DH_AUTOINCREMENT_ADDR	BIT(7)
 
 #define LIS2DH_REG_CTRL0		0x1e
@@ -203,6 +209,14 @@ struct temperature {
 	uint8_t fractional_bits;
 };
 
+struct adc_config {
+	uint8_t cfg_addr;
+	uint8_t enable_mask;
+	uint8_t cfg_addr_2;
+	uint8_t enable_mask_2;
+	uint8_t dout_addr;
+};
+
 struct lis2dh_config {
 	int (*bus_init)(const struct device *dev);
 	const union lis2dh_bus_cfg bus_cfg;
@@ -219,6 +233,9 @@ struct lis2dh_config {
 	} hw;
 #ifdef CONFIG_LIS2DH_MEASURE_TEMPERATURE
 	const struct temperature temperature;
+#endif
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+	const struct adc_config adc;
 #endif
 };
 
@@ -245,6 +262,9 @@ struct lis2dh_data {
 
 #ifdef CONFIG_LIS2DH_MEASURE_TEMPERATURE
 	struct sensor_value temperature;
+#endif
+#ifdef CONFIG_LIS2DH_MEASURE_ADC
+	struct sensor_value adc[3];
 #endif
 
 #ifdef CONFIG_PM_DEVICE

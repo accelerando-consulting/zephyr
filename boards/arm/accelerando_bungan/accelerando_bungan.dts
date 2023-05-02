@@ -31,6 +31,13 @@
 			label = "LED";
 		};
 	};
+
+        vbatt {
+              compatible = "voltage-divider";
+              io-channels = <&adc 5>;
+              output-ohms = <220000>;
+              full-ohms = <(100000 + 220000)>;
+        };
 };
 
 &adc {
@@ -58,8 +65,16 @@
         compatible = "nordic,nrf-twim";
 	status = "okay";
 	clock-frequency = <I2C_BITRATE_FAST>;
-	sda-pin = <19>;
+	sda-pin = <21>;
 	scl-pin = <20>;
+};
+
+&i2c1 {
+        compatible = "nordic,nrf-twim";
+	status = "disabled";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	sda-pin = <5>;
+	scl-pin = <4>;
 };
 
 &spi1 {

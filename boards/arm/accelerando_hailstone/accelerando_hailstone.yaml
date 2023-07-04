@@ -1,5 +1,5 @@
 identifier: accelerando_hailstone
-name: Accelerando Hailstone (with eByte E73-2G4M08S1C nrf52840 System-on-module)
+name: Accelerando Hailstone
 type: mcu
 arch: arm
 toolchain:
@@ -7,15 +7,10 @@ toolchain:
   - gnuarmemb
   - xtools
 supported:
-  - gpio
   - adc
   - usb_device
   - usb_cdc
   - ble
   - i2c
-  - arduino_i2c
-  - pwm
-  - spi
-  - ieee802154
   - watchdog
   - counter

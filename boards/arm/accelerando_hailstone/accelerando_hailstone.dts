@@ -1,5 +1,6 @@
 /dts-v1/;
 #include <nordic/nrf52840_qiaa.dtsi>
+#include "accelerando_hailstone-pinctrl.dtsi"
 
 / {
 	model = "Accelerando Hailstone (with eByte E73-2G4M08S1C nrf52840 System-on-module)";
@@ -12,11 +13,13 @@
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
+		zephyr,ieee802154 = &ieee802154;
 	};
 
 	/* These aliases are provided for compatibility with samples */
 	aliases {
 		led0 = &led0;
+		zephyr,ieee802154 = &ieee802154;
 	};
 
 	leds {
@@ -55,41 +58,46 @@
        	compatible = "nordic,nrf-uart";
 	current-speed = <115200>;
 	status = "okay";
-	tx-pin = <1>;
-	rx-pin = <0>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
 };
 
 &uart1 {
 	current-speed = <9600>;
 	status = "disabled";
-	tx-pin = <24>;
-	rx-pin = <13>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
 };
 
 arduino_i2c: &i2c0 {
         compatible = "nordic,nrf-twim";
 	status = "okay";
-	clock-frequency = <I2C_BITRATE_FAST>;
-	sda-pin = <30>;
-	scl-pin = <31>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
 
 };
 
 &i2c1 {
         compatible = "nordic,nrf-twim";
 	status = "disabled";
-	clock-frequency = <I2C_BITRATE_FAST>;
-	sda-pin = <41>;
-	scl-pin = <5>;
+	pinctrl-0 = <&i2c1_default>;
+	pinctrl-1 = <&i2c1_sleep>;
+	pinctrl-names = "default", "sleep";
 };
 
 &spi1 {
 	compatible = "nordic,nrf-spi";
 	status = "okay";
-	sck-pin = <43>;
-	mosi-pin = <3>;
-	miso-pin = <42>;
-        cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi1_default>;
+	pinctrl-1 = <&spi1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&ieee802154 {
+	status = "okay";
 };
 
 &flash0 {
@@ -132,7 +140,7 @@ arduino_i2c: &i2c0 {
 	};
 };
 
-&usbd {
+zephyr_udc0: &usbd {
 	compatible = "nordic,nrf-usbd";
 	status = "okay";
 };

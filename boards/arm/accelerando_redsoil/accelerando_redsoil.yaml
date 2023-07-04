@@ -1,5 +1,5 @@
 identifier: accelerando_redsoil
-name: Accelerando Redsoil (with eByte E73-2G4M08S1C nrf52840 System-on-module)
+name: Accelerando Redsoil
 type: mcu
 arch: arm
 toolchain:
@@ -12,6 +12,5 @@ supported:
   - usb_cdc
   - ble
   - i2c
-  - ieee802154
   - watchdog
   - counter

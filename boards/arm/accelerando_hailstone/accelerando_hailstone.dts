@@ -19,7 +19,6 @@
 	/* These aliases are provided for compatibility with samples */
 	aliases {
 		led0 = &led0;
-		zephyr,ieee802154 = &ieee802154;
 	};
 
 	leds {

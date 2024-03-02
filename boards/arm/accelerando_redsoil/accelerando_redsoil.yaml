@@ -11,6 +11,8 @@ supported:
   - usb_device
   - usb_cdc
   - ble
-  - i2c
   - watchdog
   - counter
+  - i2c
+  - spi
+vendor: accelerando

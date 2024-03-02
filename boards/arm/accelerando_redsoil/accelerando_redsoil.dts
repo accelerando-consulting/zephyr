@@ -1,6 +1,7 @@
 /dts-v1/;
 #include <nordic/nrf52840_qiaa.dtsi>
 #include "accelerando_redsoil-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 
 / {
 	model = "Accelerando Redsoil";
@@ -18,16 +19,6 @@
 		zephyr,ieee802154 = &ieee802154;
 	};
 
-	/* These aliases are provided for compatibility with samples */
-	aliases {
-		led0 = &led0;
-		sw0 = &button0;
-		sw1 = &button1;
-		sw2 = &button2;
-		sw3 = &button3;
-		watchdog0 = &wdt0;
-	};
-
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
@@ -41,18 +32,22 @@
 		button0: button_0 {
 			gpios = <&gpio0 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "Push button switch";
+			zephyr,code = <INPUT_KEY_0>;
 		};
 		button1: button_1 {
 			gpios = <&gpio0 28 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "Push button switch";
+			zephyr,code = <INPUT_KEY_1>;
 		};
 		button2: button_2 {
 			gpios = <&gpio1 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "Push button switch";
+			zephyr,code = <INPUT_KEY_2>;
 		};
 		button3: button_3 {
 			gpios = <&gpio0 18 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "Push button switch";
+			zephyr,code = <INPUT_KEY_3>;
 		};
 	};
 
@@ -62,10 +57,25 @@
 		output-ohms = <1000000>;
 		full-ohms = <(1000000 + 1000000)>;
 	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		led0 = &led0;
+		sw0 = &button0;
+		sw1 = &button1;
+		sw2 = &button2;
+		sw3 = &button3;
+		watchdog0 = &wdt0;
+	};
+
 };
 
 &adc {
 	status = "okay";
+};
+
+&uicr {
+	gpio-as-nreset;
 };
 
 &gpiote {
@@ -90,7 +100,7 @@
 };
 
 &i2c0 {
-        compatible = "nordic,nrf-twim";
+        compatible = "nordic,nrf-twi";
 	status = "okay";
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;

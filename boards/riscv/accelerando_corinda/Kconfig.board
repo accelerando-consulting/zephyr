@@ -1,0 +1,9 @@
+# Accelerando Corinda board configuration
+
+config BOARD_ACCELERANDO_CORINDA
+	bool "Accelerando Corinda ESP32C3"
+	depends on SOC_SERIES_ESP32C3
+
+choice SOC_PART_NUMBER
+	default SOC_ESP32C3_MINI_N4
+endchoice

@@ -1,0 +1,5 @@
+# nRF51 CJMCU-8223 board configuration
+
+config BOARD_NRF51_CJMCU8223
+	bool "nRF51 CJMCU-8223"
+	depends on SOC_NRF51822_QFAA

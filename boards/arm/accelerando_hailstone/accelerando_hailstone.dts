@@ -5,11 +5,11 @@
 / {
 	model = "Accelerando Hailstone (with eByte E73-2G4M08S1C nrf52840 System-on-module)";
 	chosen {
-		zephyr,console = &uart0;
-		zephyr,shell-uart = &uart0;
-		zephyr,uart-mcumgr = &uart0;
-		zephyr,bt-mon-uart = &uart0;
-		zephyr,bt-c2h-uart = &uart0;
+		zephyr,console = &usb_cdc_acm_uart;
+		zephyr,shell-uart = &usb_cdc_acm_uart;
+		zephyr,uart-mcumgr = &usb_cdc_acm_uart;
+		zephyr,bt-mon-uart = &usb_cdc_acm_uart;
+		zephyr,bt-c2h-uart = &usb_cdc_acm_uart;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
@@ -19,6 +19,12 @@
 	/* These aliases are provided for compatibility with samples */
 	aliases {
 		led0 = &led0;
+		bootloader-led0 = &led0;
+		mcuboot-led0 = &led0;
+		watchdog0 = &wdt0;
+		mcuboot-button0 = &button0;
+		sw0 = &button0;
+		sw1 = &button1;
 	};
 
 	leds {
@@ -29,8 +35,23 @@
 		};
 	};
 
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 2 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button SW1";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+		button1: button_1 {
+			gpios = <&gpio1 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button SW1";
+			zephyr,code = <INPUT_KEY_1>;
+		};
+	};
+
 	vbatt {
 		compatible = "voltage-divider";
+		status = "disabled";
 		io-channels = <&adc 5>;
 		output-ohms = <1000000>;
 		full-ohms = <(1000000 + 1000000)>;
@@ -39,6 +60,10 @@
 
 &adc {
 	status = "okay";
+};
+
+&uicr {
+	gpio-as-nreset;
 };
 
 &gpiote {
@@ -54,7 +79,7 @@
 };
 
 &uart0 {
-       	compatible = "nordic,nrf-uart";
+       	compatible = "nordic,nrf-uarte";
 	current-speed = <115200>;
 	status = "okay";
 	pinctrl-0 = <&uart0_default>;
@@ -63,6 +88,7 @@
 };
 
 &uart1 {
+       	compatible = "nordic,nrf-uarte";
 	current-speed = <9600>;
 	status = "disabled";
 	pinctrl-0 = <&uart0_default>;
@@ -70,17 +96,16 @@
 	pinctrl-names = "default", "sleep";
 };
 
-arduino_i2c: &i2c0 {
-        compatible = "nordic,nrf-twim";
+&i2c0 {
+        compatible = "nordic,nrf-twi";
 	status = "okay";
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;
 	pinctrl-names = "default", "sleep";
-
 };
 
 &i2c1 {
-        compatible = "nordic,nrf-twim";
+        compatible = "nordic,nrf-twi";
 	status = "disabled";
 	pinctrl-0 = <&i2c1_default>;
 	pinctrl-1 = <&i2c1_sleep>;
@@ -142,4 +167,8 @@ arduino_i2c: &i2c0 {
 zephyr_udc0: &usbd {
 	compatible = "nordic,nrf-usbd";
 	status = "okay";
+
+	usb_cdc_acm_uart: cdc-acm-uart {
+		compatible = "zephyr,cdc-acm-uart";
+	};
 };

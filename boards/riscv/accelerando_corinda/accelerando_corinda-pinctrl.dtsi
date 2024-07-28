@@ -33,6 +33,15 @@
 		};
 	};
 
+/*
+	spim1_ws2812_led: spim1_ws2812_led {
+		group1 {
+			pinmux = <SPIM1_MOSI_GPIO9>;
+			output-low;
+		};
+	};
+*/
+
 	i2c0_default: i2c0_default {
 		group1 {
 			pinmux = <I2C0_SDA_GPIO1>,

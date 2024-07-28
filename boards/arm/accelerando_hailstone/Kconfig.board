@@ -1,4 +1,8 @@
 # Accelerando Hailstone (D1-bus host w/ eByte E73-2G4M08S1C) configuration
+
+# Copyright (c) 2024 Christopher Biggs
+# SPDX-License-Identifier: Apache-2.0
+
 config BOARD_ACCELERANDO_HAILSTONE
-	bool "Accelerando Hailstone D1-bus host eByte E73-2G4M08S1C"
+	bool "Accelerando Hailstone D1-bus host with eByte E73-2G4M08S1C"
 	depends on SOC_NRF52840_QIAA

@@ -24,7 +24,9 @@
 		sw0 = &user_button1;
 		i2c-0 = &i2c0;
 		watchdog0 = &wdt0;
+		/*	led-strip = &led_strip;*/
 	};
+
 
 	gpio_keys {
 		compatible = "gpio-keys";
@@ -69,6 +71,31 @@ status = "okay";
 	pinctrl-0 = <&spim2_default>;
 	pinctrl-names = "default";
 };
+
+/*
+&spi1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	line-idle-low;
+	pinctrl-0 = <&spim1_ws2812_led>;
+	pinctrl-names = "default";
+
+	led_strip: ws2812@0 {
+		compatible = "worldsemi,ws2812-spi";
+		reg = <0>;
+		spi-max-frequency = <WS2812C_SPI_FREQ>;
+
+		chain-length = <1>;
+		color-mapping =	<LED_COLOR_ID_GREEN>,
+			<LED_COLOR_ID_RED>,
+			<LED_COLOR_ID_BLUE>;
+		spi-one-frame = <WS2812C_ONE_FRAME>;
+		spi-zero-frame = <WS2812C_ZERO_FRAME>;
+	};
+};
+*/
+
 
 &gpio0 {
 	status = "okay";

@@ -2,15 +2,23 @@ identifier: accelerando_hailstone
 name: Accelerando Hailstone
 type: mcu
 arch: arm
+ram: 256
+flash: 1024
 toolchain:
   - zephyr
   - gnuarmemb
   - xtools
 supported:
   - adc
-  - usb_device
-  - usb_cdc
   - ble
-  - i2c
-  - watchdog
   - counter
+  - gpio
+  - i2c
+  - i2s
+  - pwm
+  - spi
+  - usb_cdc
+  - usb_device
+  - watchdog
+  - netif:openthread
+vendor: accelerando
